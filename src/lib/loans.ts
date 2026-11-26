@@ -793,10 +793,21 @@ export function getStoredNotifications(): NotificationRecord[] {
       return createSeedLoanData().notifications;
     }
     const raw = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
-    if (!raw) return createSeedLoanData().notifications;
-    return JSON.parse(raw);
+    if (!raw) {
+      const seed = createSeedLoanData().notifications;
+      localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(seed));
+      return seed;
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      const seed = createSeedLoanData().notifications;
+      localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(seed));
+      return seed;
+    }
+    return parsed;
   } catch {
-    return [];
+    const seed = createSeedLoanData().notifications;
+    return seed;
   }
 }
 
@@ -820,10 +831,21 @@ export function getStoredAuditLogs(): AuditLogEntry[] {
       return createSeedLoanData().auditLogs;
     }
     const raw = localStorage.getItem(STORAGE_KEY_AUDIT_LOG);
-    if (!raw) return createSeedLoanData().auditLogs;
-    return JSON.parse(raw);
+    if (!raw) {
+      const seed = createSeedLoanData().auditLogs;
+      localStorage.setItem(STORAGE_KEY_AUDIT_LOG, JSON.stringify(seed));
+      return seed;
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      const seed = createSeedLoanData().auditLogs;
+      localStorage.setItem(STORAGE_KEY_AUDIT_LOG, JSON.stringify(seed));
+      return seed;
+    }
+    return parsed;
   } catch {
-    return [];
+    const seed = createSeedLoanData().auditLogs;
+    return seed;
   }
 }
 

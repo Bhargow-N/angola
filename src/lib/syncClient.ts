@@ -70,16 +70,16 @@ function applySynchronizedState(data: any) {
       const merged = mergeById(currentList, data.allEvaluations);
       localStorage.setItem(STORAGE_KEY_EVALUATIONS, JSON.stringify(merged));
     }
-    if (data.allNotifications && Array.isArray(data.allNotifications)) {
+    if (data.allNotifications && Array.isArray(data.allNotifications) && data.allNotifications.length > 0) {
       const rawCurrent = localStorage.getItem(STORAGE_KEY_NOTIFICATIONS);
       const currentList = rawCurrent ? JSON.parse(rawCurrent) : [];
-      const merged = mergeById(currentList, data.allNotifications);
+      const merged = mergeById(currentList.length > 0 ? currentList : data.allNotifications, data.allNotifications);
       localStorage.setItem(STORAGE_KEY_NOTIFICATIONS, JSON.stringify(merged));
     }
-    if (data.allAuditLogs && Array.isArray(data.allAuditLogs)) {
+    if (data.allAuditLogs && Array.isArray(data.allAuditLogs) && data.allAuditLogs.length > 0) {
       const rawCurrent = localStorage.getItem(STORAGE_KEY_AUDIT_LOG);
       const currentList = rawCurrent ? JSON.parse(rawCurrent) : [];
-      const merged = mergeById(currentList, data.allAuditLogs);
+      const merged = mergeById(currentList.length > 0 ? currentList : data.allAuditLogs, data.allAuditLogs);
       localStorage.setItem(STORAGE_KEY_AUDIT_LOG, JSON.stringify(merged));
     }
 
@@ -116,31 +116,32 @@ export function initSyncClient(): void {
       console.warn('[SyncClient] Supabase hydration notice:', err.message);
     });
 
-  // 2. Secondary: Hydration from Local Vite dev server (if on localhost)
+  // 2. Secondary: Hydration from /api/db/all (available both on Vite dev server and Vercel serverless)
+  fetch(`${getApiBaseUrl()}/api/db/all`)
+    .then((res) => {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
+        return res.json();
+      }
+      throw new Error(`DB fetch returned non-json: ${contentType}`);
+    })
+    .then((db) => {
+      applySynchronizedState({
+        allApps: db.applications,
+        allApprovals: db.approvals,
+        allEvaluations: db.evaluations,
+        allNotifications: db.notifications,
+        allAuditLogs: db.auditLogs,
+      });
+    })
+    .catch(() => {
+      // Normal in static or offline environments
+    });
+
   const isLocalHost = typeof window !== 'undefined' &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
   if (isLocalHost) {
-    fetch(`${getApiBaseUrl()}/api/db/all`)
-      .then((res) => {
-        const contentType = res.headers.get('content-type') || '';
-        if (res.ok && contentType.includes('application/json')) {
-          return res.json();
-        }
-        throw new Error(`DB fetch returned non-json: ${contentType}`);
-      })
-      .then((db) => {
-        applySynchronizedState({
-          allApps: db.applications,
-          allApprovals: db.approvals,
-          allEvaluations: db.evaluations,
-          allNotifications: db.notifications,
-          allAuditLogs: db.auditLogs,
-        });
-      })
-      .catch(() => {
-        // Normal in static or offline environments
-      });
 
     // 3. Connect to Server-Sent Events (SSE) stream for instant live updates between local ports
     const connectSSE = () => {

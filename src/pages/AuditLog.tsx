@@ -41,23 +41,27 @@ export const AuditLog: React.FC = () => {
     return map;
   }, [apps]);
 
-  const formatEntityId = (_entity: string, entityId: string) => {
-    const appNo = appMap.get(entityId);
+  const formatEntityId = (_entity: string, entityId?: string | number | null) => {
+    if (!entityId) return 'N/A';
+    const appNo = appMap.get(String(entityId));
     if (appNo) {
       return `Application ID: ${appNo}`;
     }
-    return entityId;
+    return String(entityId);
   };
 
   const filtered = logs.filter((log) => {
+    if (!log) return false;
     const q = search.toLowerCase();
-    const actor = log.actor_name?.toLowerCase() || '';
-    const action = log.action.toLowerCase();
-    const entityId = log.entity_id.toLowerCase();
-    const appNo = appMap.get(log.entity_id);
+    const actor = (log.actor_name || log.actor || '').toLowerCase();
+    const action = (log.action || '').toLowerCase();
+    const rawEntityId = log.entity_id || (log as any).application_id || '';
+    const entityId = String(rawEntityId).toLowerCase();
+    const entity = log.entity || 'chatbot';
+    const appNo = appMap.get(String(rawEntityId));
     const appNoStr = appNo ? String(appNo) : '';
     const matchesSearch = actor.includes(q) || action.includes(q) || entityId.includes(q) || appNoStr.includes(q);
-    const matchesEntity = entityFilter === 'all' || log.entity === entityFilter;
+    const matchesEntity = entityFilter === 'all' || entity === entityFilter;
     return matchesSearch && matchesEntity;
   });
 
@@ -140,11 +144,17 @@ export const AuditLog: React.FC = () => {
                 </tr>
               ) : (
                 filtered.map((entry) => {
+                  const actionStr = String(entry.action || '').toLowerCase();
                   let actionBadge = 'bg-slate-100 text-slate-700';
-                  if (entry.action.includes('create')) actionBadge = 'bg-blue-100 text-blue-800';
-                  if (entry.action.includes('submit')) actionBadge = 'bg-purple-100 text-purple-800';
-                  if (entry.action.includes('approve')) actionBadge = 'bg-emerald-100 text-emerald-800';
-                  if (entry.action.includes('reject')) actionBadge = 'bg-red-100 text-red-800';
+                  if (actionStr.includes('create')) actionBadge = 'bg-blue-100 text-blue-800';
+                  if (actionStr.includes('submit')) actionBadge = 'bg-purple-100 text-purple-800';
+                  if (actionStr.includes('approve')) actionBadge = 'bg-emerald-100 text-emerald-800';
+                  if (actionStr.includes('reject')) actionBadge = 'bg-red-100 text-red-800';
+                  if (actionStr.includes('chat')) actionBadge = 'bg-orange-100 text-orange-800';
+
+                  const rawDate = entry.at || (entry as any).timestamp;
+                  const dateStr = rawDate ? new Date(rawDate).toLocaleString() : new Date().toLocaleString();
+                  const rawEntityId = entry.entity_id || (entry as any).application_id;
 
                   return (
                     <tr
@@ -154,37 +164,37 @@ export const AuditLog: React.FC = () => {
                     >
                       {/* Timestamp */}
                       <td className="py-3 px-4 whitespace-nowrap text-slate-500 font-mono text-[11px]">
-                        {new Date(entry.at).toLocaleString()}
+                        {dateStr}
                       </td>
 
                       {/* Actor */}
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 font-bold text-navy">
                           <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                          <span>{entry.actor_name || 'System / Batch'}</span>
+                          <span>{entry.actor_name || entry.actor || 'System / Batch'}</span>
                         </div>
                       </td>
 
                       {/* Action */}
                       <td className="py-3 px-3 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase ${actionBadge}`}>
-                          {entry.action}
+                          {entry.action || 'system_event'}
                         </span>
                       </td>
 
                       {/* Entity */}
                       <td className="py-3 px-3 whitespace-nowrap text-slate-600 font-mono text-[11px]">
-                        {entry.entity}
+                        {entry.entity || 'chatbot'}
                       </td>
 
                       {/* Entity ID */}
                       <td className="py-3 px-4 whitespace-nowrap font-mono font-bold text-slate-800">
-                        {formatEntityId(entry.entity, entry.entity_id)}
+                        {formatEntityId(entry.entity || 'chatbot', rawEntityId)}
                       </td>
 
                       {/* Details Payload Preview */}
                       <td className="py-3 px-4 text-slate-500 font-mono text-[10px] max-w-xs truncate">
-                        {JSON.stringify(entry.details)}
+                        {typeof entry.details === 'object' ? JSON.stringify(entry.details) : String(entry.details || '')}
                       </td>
 
                       {/* Inspect */}
@@ -237,25 +247,31 @@ export const AuditLog: React.FC = () => {
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 space-y-1">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Timestamp:</span>
-                  <span className="font-mono text-slate-700">{new Date(inspectEntry.at).toISOString()}</span>
+                  <span className="font-mono text-slate-700">
+                    {new Date(inspectEntry.at || (inspectEntry as any).timestamp || Date.now()).toISOString()}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Actor:</span>
-                  <span className="font-bold text-navy">{inspectEntry.actor_name}</span>
+                  <span className="font-bold text-navy">{inspectEntry.actor_name || inspectEntry.actor || 'System'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Entity / ID:</span>
-                  <span className="font-mono text-slate-700">{inspectEntry.entity} / {formatEntityId(inspectEntry.entity, inspectEntry.entity_id)}</span>
+                  <span className="font-mono text-slate-700">
+                    {inspectEntry.entity || 'chatbot'} / {formatEntityId(inspectEntry.entity || 'chatbot', inspectEntry.entity_id || (inspectEntry as any).application_id)}
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-1">
                 <span className="font-semibold text-slate-700 flex items-center gap-1.5">
                   <FileCode className="w-3.5 h-3.5 text-navy" />
-                  Structured Details Payload (JSON):
+                  Structured Details Payload:
                 </span>
                 <pre className="p-3 rounded-lg bg-slate-900 text-emerald-400 font-mono text-[11px] overflow-x-auto max-h-56 leading-relaxed">
-                  {JSON.stringify(inspectEntry.details, null, 2)}
+                  {typeof inspectEntry.details === 'object'
+                    ? JSON.stringify(inspectEntry.details, null, 2)
+                    : String(inspectEntry.details || 'No additional details recorded')}
                 </pre>
               </div>
             </div>

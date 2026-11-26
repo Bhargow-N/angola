@@ -53,11 +53,15 @@ export const Notifications: React.FC = () => {
 
   const filtered = useMemo(() => {
     return notifications.filter((n) => {
+      if (!n) return false;
       const q = search.toLowerCase();
+      const toEmail = String(n.to_email || '').toLowerCase();
+      const subject = String(n.subject || '').toLowerCase();
+      const body = String(n.body || '').toLowerCase();
       const matchesSearch =
-        n.to_email.toLowerCase().includes(q) ||
-        n.subject.toLowerCase().includes(q) ||
-        n.body.toLowerCase().includes(q);
+        toEmail.includes(q) ||
+        subject.includes(q) ||
+        body.includes(q);
       const matchesKind = kindFilter === 'all' || n.kind === kindFilter;
       return matchesSearch && matchesKind;
     });
@@ -325,7 +329,7 @@ export const Notifications: React.FC = () => {
                       </td>
 
                       <td className="py-2.5 px-4 whitespace-nowrap font-mono text-[11px] text-slate-500">
-                        {new Date(notif.created_at).toLocaleString()}
+                        {notif.created_at ? new Date(notif.created_at).toLocaleString() : new Date().toLocaleString()}
                       </td>
 
                       <td className="py-2 px-2 text-center whitespace-nowrap">

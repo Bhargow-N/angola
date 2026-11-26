@@ -2480,15 +2480,22 @@ Current role: ${role}. Pending confirmation: ${session.pendingLookupConfirmation
 
   // Log in immutable audit log
   const auditEntry = {
-    id: `AUDIT-CHAT-${Date.now()}`,
-    action: 'CHATBOT_MESSAGE',
+    id: Date.now(),
+    at: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
     actor: session.verifiedMsisdn || role,
-    role,
+    actor_name: session.verifiedMsisdn
+      ? `Subscriber (+${session.verifiedMsisdn})`
+      : role === 'customer'
+        ? 'Tomas Silva (Applicant)'
+        : 'Dra. Maria Mendes (Approver)',
+    action: 'chatbot_message',
+    entity: 'chatbot',
+    entity_id: session.verifiedApplicationId || 'GLOBAL',
     application_id: session.verifiedApplicationId || 'GLOBAL',
     details: `User (${role}) query: "${query.slice(0, 100)}". Answered by: ${answeredBy.toUpperCase()} (${answeredModel})`,
     provider: answeredBy,
     provider_model: answeredModel,
-    timestamp: new Date().toISOString(),
   };
   if (!dbData.auditLogs) dbData.auditLogs = [];
   dbData.auditLogs.unshift(auditEntry);
