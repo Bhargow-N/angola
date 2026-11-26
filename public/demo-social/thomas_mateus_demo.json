@@ -1,0 +1,31 @@
+{
+  "handle": "thomas_mateus_demo",
+  "display_name": "Thomas M. (Retail & Logistics)",
+  "platform": "instagram",
+  "posts": [
+    {
+      "id": "post_tm_101",
+      "date": "2026-10-15T14:30:00Z",
+      "caption": "Dia de trabalho intenso com a minha moto Yamaha nova na entrega de encomendas para clientes #moto #yamaha #entregas #luanda",
+      "hashtags": ["moto", "yamaha", "entregas", "luanda"],
+      "location": "Luanda - Maculusso",
+      "image_description": "Blue Yamaha delivery motorbike parked outside a logistics loading storefront, no visible people"
+    },
+    {
+      "id": "post_tm_102",
+      "date": "2026-10-28T09:15:00Z",
+      "caption": "Reposição de estoque da loja Mini-Mercado Luanda Sul. Novas mercadorias organizadas e prontas para venda! #loja #comercio #negocio #estoque",
+      "hashtags": ["loja", "comercio", "negocio", "estoque"],
+      "location": "Luanda Sul - Viana",
+      "image_description": "Clean interior retail shelving stocked with wholesale goods in a small neighborhood shop"
+    },
+    {
+      "id": "post_tm_103",
+      "date": "2026-11-04T12:00:00Z",
+      "caption": "Revisão periódica da moto em dia para garantir segurança nas viagens de abastecimento do comércio #moto #manutencao",
+      "hashtags": ["moto", "manutencao"],
+      "location": "Luanda - Bairro Azul",
+      "image_description": "Motorbike engine workshop bay with maintenance tools on workbench"
+    }
+  ]
+}

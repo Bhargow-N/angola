@@ -1,0 +1,23 @@
+{
+  "handle": "maria_candida_demo",
+  "display_name": "M. C. (Student & Design)",
+  "platform": "instagram",
+  "posts": [
+    {
+      "id": "post_mc_201",
+      "date": "2026-09-12T17:45:00Z",
+      "caption": "Final de tarde sereno na Baía de Luanda com brisa do mar #luanda #mar #fimdetarde",
+      "hashtags": ["luanda", "mar", "fimdetarde"],
+      "location": "Baía de Luanda",
+      "image_description": "Scenic sunset seascape over the Atlantic ocean coastline, calm water"
+    },
+    {
+      "id": "post_mc_202",
+      "date": "2026-10-05T11:20:00Z",
+      "caption": "Café quente e leitura matinal antes do início dos estudos da semana #estudo #leitura",
+      "hashtags": ["estudo", "leitura"],
+      "location": "Miramar",
+      "image_description": "Coffee ceramic cup placed next to an open notebook on a wooden study desk"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+/**
+ * Centralized English Copy for Angola Telecom Credit Scoring & Equipment Financing (Unitel)
+ * Follows Few-Words Rule: Screen titles <= 4 words, Helpers <= 10 words.
+ */
+
+export const COPY = {
+  app: {
+    title: 'Unitel Credit Intelligence',
+    subtitle: 'Credit & Device Financing',
+    tagline: 'Multi-segment credit limit and equipment loan evaluation',
+    currencyUnit: 'Kz',
+    version: 'v2.0 Enterprise',
+  },
+  roles: {
+    applicant: {
+      label: 'Applicant',
+      desc: 'Apply for equipment financing and track applications.',
+    },
+    approver: {
+      label: 'Approver',
+      desc: 'Review applications and approve credit decisions.',
+    },
+    admin: {
+      label: 'Admin',
+      desc: 'Configure scoring points, weights, and data sources.',
+    },
+  },
+  nav: {
+    applicantPortal: 'Applicant portal',
+    approverPortal: 'Approver portal',
+    newApplication: 'New application',
+    newEvaluation: 'New application',
+    myApplications: 'My applications',
+    applications: 'Applications',
+    evaluations: 'Evaluations',
+    dashboard: 'Dashboard',
+    queue: 'Applications queue',
+    approvals: 'Applications queue',
+    instantCheck: 'Instant credit check',
+    notifications: 'Notifications',
+    auditLog: 'Audit log',
+    pointsPanel: 'Points panel',
+    segments: 'Segments',
+    dataSources: 'Data sources',
+    settings: 'Settings',
+    admin: 'Settings',
+  },
+  blocks: {
+    P: { code: 'P', name: 'Personal and identity', color: '#5F6F80' },
+    T: { code: 'T', name: 'Telecom behaviour', color: '#14808A' },
+    W: { code: 'W', name: 'Wallet and mobile money', color: '#7B4FA3' },
+    B: { code: 'B', name: 'Bank and formal finance', color: '#2F4B7C' },
+    X: { code: 'X', name: 'Other alternative data', color: '#B26A00' },
+    A: { code: 'A', name: 'Assets and income', color: '#22A06B' },
+  },
+  segments: {
+    S1: { code: 'S1', name: 'Button phone, cash-only', color: '#8A6D3B' },
+    S2: { code: 'S2', name: 'Button phone with USSD wallet', color: '#C0612B' },
+    S3: { code: 'S3', name: 'Smartphone, unbanked, wallet app', color: '#7B4FA3' },
+    S4: { code: 'S4', name: 'Agent-assisted cash user', color: '#B8860B' },
+    S5: { code: 'S5', name: 'Banked (ATM and card)', color: '#2F4B7C' },
+    S6: { code: 'S6', name: 'Banked digital, hybrid with wallet', color: '#14808A' },
+    S7: { code: 'S7', name: 'Salaried worker', color: '#22A06B' },
+    S8: { code: 'S8', name: 'Trader or self-employed', color: '#C8372D' },
+    S9: { code: 'S9', name: 'Remittance-dependent household', color: '#4A6FA5' },
+    S10: { code: 'S10', name: 'Postpaid or high-value subscriber', color: '#444B6E' },
+  },
+  coverage: {
+    high: 'High Coverage',
+    medium: 'Medium Coverage',
+    low: 'Low Coverage',
+  },
+  coreIdea: 'Tailored scoring across 5 segments. Missing data never penalised.',
+  common: {
+    back: 'Back',
+    next: 'Next',
+    save: 'Save',
+    cancel: 'Cancel',
+    submit: 'Submit application',
+    approve: 'Approve',
+    reject: 'Reject',
+    review: 'Review',
+    search: 'Search...',
+    status: 'Status',
+    actions: 'Actions',
+    loading: 'Loading...',
+    noData: 'No records found.',
+    yes: 'Yes',
+    no: 'No',
+    skip: 'Skip',
+  },
+} as const;
