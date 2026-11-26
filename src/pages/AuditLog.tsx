@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { COPY } from '../copy/en';
-import { AuditLogEntry } from '../types';
-import { getStoredAuditLogs } from '../lib/loans';
+import { AuditLogEntry, LoanApplication } from '../types';
+import { getStoredAuditLogs, getStoredApplications } from '../lib/loans';
 import { useSyncDatabase } from '../lib/syncClient';
 import {
   History,
@@ -16,24 +16,47 @@ import { Modal } from '../components/Modal';
 
 export const AuditLog: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [apps, setApps] = useState<LoanApplication[]>([]);
   const [search, setSearch] = useState<string>('');
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [inspectEntry, setInspectEntry] = useState<AuditLogEntry | null>(null);
 
   useEffect(() => {
     setLogs(getStoredAuditLogs());
+    setApps(getStoredApplications());
   }, []);
 
   useSyncDatabase(() => {
     setLogs(getStoredAuditLogs());
+    setApps(getStoredApplications());
   });
+
+  const appMap = useMemo(() => {
+    const map = new Map<string, number>();
+    apps.forEach((a) => {
+      if (a.applicationNo) {
+        map.set(a.id, a.applicationNo);
+      }
+    });
+    return map;
+  }, [apps]);
+
+  const formatEntityId = (_entity: string, entityId: string) => {
+    const appNo = appMap.get(entityId);
+    if (appNo) {
+      return `Application ID: ${appNo}`;
+    }
+    return entityId;
+  };
 
   const filtered = logs.filter((log) => {
     const q = search.toLowerCase();
     const actor = log.actor_name?.toLowerCase() || '';
     const action = log.action.toLowerCase();
     const entityId = log.entity_id.toLowerCase();
-    const matchesSearch = actor.includes(q) || action.includes(q) || entityId.includes(q);
+    const appNo = appMap.get(log.entity_id);
+    const appNoStr = appNo ? String(appNo) : '';
+    const matchesSearch = actor.includes(q) || action.includes(q) || entityId.includes(q) || appNoStr.includes(q);
     const matchesEntity = entityFilter === 'all' || log.entity === entityFilter;
     return matchesSearch && matchesEntity;
   });
@@ -156,7 +179,7 @@ export const AuditLog: React.FC = () => {
 
                       {/* Entity ID */}
                       <td className="py-3 px-4 whitespace-nowrap font-mono font-bold text-slate-800">
-                        {entry.entity_id}
+                        {formatEntityId(entry.entity, entry.entity_id)}
                       </td>
 
                       {/* Details Payload Preview */}
@@ -222,7 +245,7 @@ export const AuditLog: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Entity / ID:</span>
-                  <span className="font-mono text-slate-700">{inspectEntry.entity} / {inspectEntry.entity_id}</span>
+                  <span className="font-mono text-slate-700">{inspectEntry.entity} / {formatEntityId(inspectEntry.entity, inspectEntry.entity_id)}</span>
                 </div>
               </div>
 

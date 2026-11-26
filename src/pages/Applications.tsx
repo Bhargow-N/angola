@@ -245,8 +245,8 @@ export const Applications: React.FC = () => {
             <div>
               <div className="text-sm font-bold flex items-center gap-2">
                 <span>Loan Application Submitted Successfully!</span>
-                <span className="font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-xs">
-                  {justSubmittedApp.id.slice(-8).toUpperCase()}
+                <span className="font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-xs font-bold">
+                  Application ID: {justSubmittedApp.applicationNo || 10001}
                 </span>
               </div>
               <div className="text-xs text-emerald-800 mt-0.5">
@@ -358,17 +358,17 @@ export const Applications: React.FC = () => {
                       {/* ID */}
                       <td className="py-3 px-4 whitespace-nowrap font-mono font-bold text-navy group/id">
                         <div className="inline-flex items-center gap-1.5">
-                          <span>{app.id.slice(-8).toUpperCase()}</span>
+                          <span>Application ID: {app.applicationNo || app.id}</span>
                           <button
                             type="button"
-                            onClick={(e) => handleCopyId(e, app.id.slice(-8).toUpperCase())}
+                            onClick={(e) => handleCopyId(e, String(app.applicationNo || app.id))}
                             title="Copy Application ID"
-                            className={`p-1 rounded-md transition-opacity ${copiedAppId === app.id.slice(-8).toUpperCase()
+                            className={`p-1 rounded-md transition-opacity ${copiedAppId === String(app.applicationNo || app.id)
                                 ? 'opacity-100 text-emerald-600 bg-emerald-50'
                                 : 'opacity-0 group-hover/id:opacity-100 text-slate-400 hover:text-orange hover:bg-orange/10'
                               }`}
                           >
-                            {copiedAppId === app.id.slice(-8).toUpperCase() ? (
+                            {copiedAppId === String(app.applicationNo || app.id) ? (
                               <Check className="w-3.5 h-3.5" />
                             ) : (
                               <Copy className="w-3.5 h-3.5" />
@@ -677,7 +677,7 @@ export const Applications: React.FC = () => {
                   Application Details
                 </span>
                 <h3 className="text-lg font-bold text-navy mt-0.5">
-                  Reference: {inspectApp.id.slice(-8).toUpperCase()}
+                  Application ID: {inspectApp.applicationNo || inspectApp.id}
                 </h3>
               </div>
               <button

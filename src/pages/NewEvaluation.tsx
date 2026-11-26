@@ -6,7 +6,7 @@ import { getStoredEquipment, addCustomEquipment, deleteCustomEquipment, isSegmen
 import { calculateCreditScore, DEFAULT_POINT_RULES } from '../lib/scoring';
 import { formatKz } from '../lib/money';
 import { saveEvaluation } from '../lib/evaluations';
-import { saveApplication, getActiveDraft, saveActiveDraft, clearActiveDraft, ApplicationDraft } from '../lib/loans';
+import { saveApplication, getActiveDraft, saveActiveDraft, clearActiveDraft, ApplicationDraft, getNextApplicationNo, getStoredApplications } from '../lib/loans';
 import { ScoreGauge } from '../components/ScoreGauge';
 import { Modal } from '../components/Modal';
 import { callAiTask } from '../lib/aiClient';
@@ -726,9 +726,11 @@ export const NewEvaluation: React.FC = () => {
     const monthlyEmiVal = Math.round(selectedEq.price_kz / selectedTermMonths);
     const emiShareVal = Math.round((monthlyEmiVal / (incomeEstimateKz || 1)) * 1000) / 10;
     const newAppId = `app-${Date.now()}`;
+    const nextApplicationNo = getNextApplicationNo(getStoredApplications(true));
 
     const newApp: LoanApplication = {
       id: newAppId,
+      applicationNo: nextApplicationNo,
       evaluation_id: newEvalId,
       equipment_id: selectedEq.id,
       price_kz: selectedEq.price_kz,
@@ -3388,7 +3390,7 @@ export const NewEvaluation: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-black font-heading text-ink">Application Submitted</h3>
-                  <span className="text-[11px] font-mono text-slate-500">Ref: {submittedApp.id}</span>
+                  <span className="text-[11px] font-mono text-slate-500">Application ID: {submittedApp.applicationNo || submittedApp.id}</span>
                 </div>
               </div>
               <button
@@ -3433,7 +3435,7 @@ export const NewEvaluation: React.FC = () => {
               </div>
               <div className="p-3 bg-white space-y-2 text-slate-700">
                 <p className="font-semibold text-ink">
-                  Subject: New Loan Application Submitted ({submittedApp.id.slice(-6).toUpperCase()}) - {customer.fullName}
+                  Subject: New Loan Application Submitted (Application ID: {submittedApp.applicationNo || submittedApp.id}) - {customer.fullName}
                 </p>
                 <p className="text-[11px] text-slate-500">
                   A new credit evaluation and equipment financing application has been submitted for {selectedEquipment.name} ({formatKz(selectedEquipment.price_kz)}).

@@ -144,7 +144,8 @@ export function maskPhone(phone = '') {
 }
 
 /**
- * Find an application by ID, short ref suffix (e.g. 096941), phone digits, name, or combined "096941 swetha s"
+ * Find an application by 5-digit applicationNo, full ID, short ref suffix, phone digits, or name.
+ * Accepts "10234", "#10234", "APP-10234", "app 10234", "10001", legacy IDs, and phone numbers.
  */
 export function findMatchingApplication(applications = [], rawQuery = '') {
   const raw = String(rawQuery || '').trim();
@@ -156,7 +157,7 @@ export function findMatchingApplication(applications = [], rawQuery = '') {
     'tell', 'me', 'the', 'story', 'stroy', 'about', 'overview', 'of', 'applicant', 'applivant',
     'customer', 'details', 'detail', 'for', 'what', 'whats', 'is', 'are', 'give', 'show',
     'check', 'please', 'status', 'summary', 'info', 'information', 'profile', 'history', 'loan',
-    'can', 'i', 'get', 'see', 'view', 'find', 'her', 'his', 'their', 'on', 'in', 'with',
+    'can', 'i', 'get', 'see', 'view', 'find', 'her', 'his', 'their', 'on', 'in', 'with', 'app', 'application', 'id',
   ]);
   const tokens = queryLower.replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter(Boolean);
   const digitTokens = tokens.map((t) => cleanDigits(t)).filter((d) => d.length >= 4);
@@ -164,7 +165,19 @@ export function findMatchingApplication(applications = [], rawQuery = '') {
 
   const activeApps = applications.filter((a) => !a.deleted_at);
 
-  // 1. Exact ID / suffix / phone match first
+  // 1. Match by 5-digit applicationNo (accepts "10234", "#10234", "APP-10234", "app 10234", "10001", etc.)
+  const appNoMatch = activeApps.find((a) => {
+    const no = a.applicationNo || a.application_no;
+    if (!no) return false;
+    const noStr = String(no);
+    if (queryDigits === noStr) return true;
+    if (digitTokens.includes(noStr)) return true;
+    if (queryUpper.includes(noStr)) return true;
+    return false;
+  });
+  if (appNoMatch) return appNoMatch;
+
+  // 2. Exact ID / legacy ID / suffix / phone match
   const exactMatch = activeApps.find((a) => {
     const appIdUpper = (a.id || '').toUpperCase();
     const appPhoneDigits = cleanDigits(a.msisdn || a.customer_msisdn || a.phone || '');
@@ -179,14 +192,14 @@ export function findMatchingApplication(applications = [], rawQuery = '') {
   });
   if (exactMatch) return exactMatch;
 
-  // 2. Exact full name match first (e.g. "Swetha S" -> "Swetha S", not "Swetha")
+  // 3. Exact full name match first (e.g. "Swetha S" -> "Swetha S", not "Swetha")
   const exactNameMatch = activeApps.find((a) => {
     const custNameLower = String(a.customer_name || a.evaluation?.customer?.full_name || '').trim().toLowerCase();
     return custNameLower && (custNameLower === queryLower || custNameLower === nameTokens.join(' '));
   });
   if (exactNameMatch) return exactNameMatch;
 
-  // 3. All meaningful name tokens match
+  // 4. All meaningful name tokens match
   if (nameTokens.length > 0) {
     const allTokensMatch = activeApps.find((a) => {
       const custNameLower = String(a.customer_name || a.evaluation?.customer?.full_name || '').toLowerCase();
@@ -194,7 +207,7 @@ export function findMatchingApplication(applications = [], rawQuery = '') {
     });
     if (allTokensMatch) return allTokensMatch;
 
-    // 4. Single meaningful name token match (e.g. "swetha" or "demo")
+    // 5. Single meaningful name token match (e.g. "swetha" or "demo")
     const anyTokenMatch = activeApps.find((a) => {
       const custNameLower = String(a.customer_name || a.evaluation?.customer?.full_name || '').toLowerCase();
       return nameTokens.some((nt) => custNameLower.includes(nt));
@@ -203,6 +216,25 @@ export function findMatchingApplication(applications = [], rawQuery = '') {
   }
 
   return null;
+}
+
+/**
+ * Robustly resolve application by 5-digit number, full ID, or matching query
+ */
+export function resolveApp(applications = [], targetId = '') {
+  if (!targetId) return null;
+  const raw = String(targetId).trim();
+  const digits = cleanDigits(raw);
+  const upper = raw.toUpperCase();
+  return (
+    applications.find((a) => {
+      if (a.deleted_at) return false;
+      const no = a.applicationNo || a.application_no;
+      if (no && (String(no) === digits || upper.includes(String(no)))) return true;
+      if (a.id && (a.id.toUpperCase() === upper || a.id.toUpperCase().endsWith(upper))) return true;
+      return false;
+    }) || findMatchingApplication(applications, raw)
+  );
 }
 
 function formatStaffApplicationProfile(app) {
@@ -217,8 +249,12 @@ function formatStaffApplicationProfile(app) {
       age = Math.floor(diff / (365.25 * 24 * 60 * 60 * 1000));
     }
   }
+  const appNo = app.applicationNo || app.application_no || null;
+  const displayId = appNo ? `Application ID: ${appNo}` : app.id;
   return {
     id: app.id,
+    application_no: appNo,
+    application_id: displayId,
     name: app.customer_name || cust.full_name || 'Subscriber',
     age,
     date_of_birth: dob,
@@ -260,7 +296,12 @@ export function executeTool(toolName, args = {}, context = {}) {
     // Strict Customer Privacy: A customer cannot look up another application once verified
     if (role === 'customer' && session?.verifiedApplicationId && queryUpper) {
       const verifiedUpper = String(session.verifiedApplicationId).toUpperCase();
-      if (verifiedUpper !== queryUpper && !queryUpper.includes(verifiedUpper)) {
+      const verifiedNo = String(session.verifiedApplicationNo || '');
+      const matchesVerified =
+        verifiedUpper === queryUpper ||
+        queryUpper.includes(verifiedUpper) ||
+        (verifiedNo && (queryDigits === verifiedNo || queryUpper.includes(verifiedNo)));
+      if (!matchesVerified) {
         return {
           found: false,
           error: 'Permission denied: Customers cannot view other applications.',
@@ -269,12 +310,13 @@ export function executeTool(toolName, args = {}, context = {}) {
       }
     }
 
-    let app = findMatchingApplication(applications, raw);
+    let app = resolveApp(applications, raw);
 
     // Support standard demo customer APP-1001 / Thomas Ndalu (+244 923 111 222) if not yet in DB
     if (!app && (queryUpper.includes('1001') || queryDigits.includes('111222') || queryDigits.includes('1222'))) {
       app = {
         id: 'APP-1001',
+        applicationNo: 10001,
         customer_name: 'Thomas Ndalu',
         msisdn: '+244 923 111 222',
         status: 'submitted',
@@ -292,6 +334,7 @@ export function executeTool(toolName, args = {}, context = {}) {
     // Check if input is a partial ID matching the end of active application IDs
     const isExactIdOrPhone = app && (
       (app.id || '').toUpperCase() === queryUpper ||
+      (app.applicationNo && (String(app.applicationNo) === queryDigits || queryUpper.includes(String(app.applicationNo)))) ||
       (queryDigits.length >= 6 && (
         cleanDigits(app.msisdn || app.customer_msisdn || app.phone || '').includes(queryDigits) ||
         cleanDigits(app.evaluation?.customer?.msisdn || '').includes(queryDigits)
@@ -300,25 +343,30 @@ export function executeTool(toolName, args = {}, context = {}) {
 
     if (!isExactIdOrPhone && queryDigits.length >= 3 && queryDigits.length < 10) {
       const suffixMatches = applications.filter(
-        (a) => !a.deleted_at && String(a.id || '').toUpperCase().endsWith(queryDigits)
+        (a) => !a.deleted_at && (
+          String(a.id || '').toUpperCase().endsWith(queryDigits) ||
+          String(a.applicationNo || '').endsWith(queryDigits)
+        )
       );
       if (suffixMatches.length === 1 && String(suffixMatches[0].id || '').toUpperCase() !== queryUpper) {
         const matched = suffixMatches[0];
+        const matchDisplayId = matched.applicationNo ? `Application ID: ${matched.applicationNo}` : matched.id;
         if (session) {
           session.pendingLookupConfirmation = matched.id;
         }
         return {
           found: true,
           needs_confirmation: true,
-          application_id: matched.id,
-          confirm_prompt: `Did you mean ${matched.id}?`,
+          application_id: matchDisplayId,
+          raw_id: matched.id,
+          confirm_prompt: `Did you mean ${matchDisplayId}?`,
         };
       }
       if (suffixMatches.length > 1) {
         return {
           found: false,
-          multiple_matches: suffixMatches.slice(0, 3).map((m) => m.id),
-          message: `Multiple applications match (${suffixMatches.slice(0, 3).map((m) => m.id).join(', ')}). Please provide the full Application ID.`,
+          multiple_matches: suffixMatches.slice(0, 3).map((m) => m.applicationNo ? `Application ID: ${m.applicationNo}` : m.id),
+          message: `Multiple applications match. Please provide the full Application ID.`,
         };
       }
     }
@@ -334,11 +382,13 @@ export function executeTool(toolName, args = {}, context = {}) {
     const appPhone = app.msisdn || app.customer_msisdn || app.evaluation?.customer?.msisdn || '923111222';
     const digitsOnly = cleanDigits(appPhone);
     const expectedLast4 = digitsOnly.slice(-4) || '1222';
+    const displayId = app.applicationNo ? `Application ID: ${app.applicationNo}` : app.id;
 
     // Store pending verification in session
     if (session) {
       session.pendingVerification = {
         applicationId: app.id,
+        applicationNo: app.applicationNo || null,
         expectedLast4,
         msisdn: appPhone,
       };
@@ -347,7 +397,9 @@ export function executeTool(toolName, args = {}, context = {}) {
 
     return {
       found: true,
-      application_id: app.id,
+      application_id: displayId,
+      raw_id: app.id,
+      application_no: app.applicationNo || null,
       customer_name: app.customer_name || app.evaluation?.customer?.full_name || 'Subscriber',
       masked_phone: maskPhone(appPhone),
       prompt: 'Please confirm the last 4 digits of your mobile number.',
@@ -365,33 +417,37 @@ export function executeTool(toolName, args = {}, context = {}) {
     }
 
     const appId = String(args.application_id || session?.pendingVerification?.applicationId || '').trim();
-    const app = applications.find((a) => (a.id || '').toUpperCase() === appId.toUpperCase());
+    const app = resolveApp(applications, appId);
     if (!app) {
       return { verified: false, error: 'Please share your Application ID or mobile number first.' };
     }
 
     const appPhone = app.msisdn || app.customer_msisdn || app.evaluation?.customer?.msisdn || '923111222';
     const expectedLast4 = cleanDigits(appPhone).slice(-4);
+    const displayId = app.applicationNo ? `Application ID: ${app.applicationNo}` : app.id;
 
     if (rawDigits !== expectedLast4) {
       const custName = app.customer_name || app.evaluation?.customer?.full_name || 'Subscriber';
       return {
         verified: false,
-        application_id: app.id,
-        error: `Those 4 digits don't match our records for ${custName} (${app.id}). Please try again.`,
+        application_id: displayId,
+        error: `Those 4 digits don't match our records for ${custName} (${displayId}). Please try again.`,
       };
     }
 
     // Success: mark session as verified for the rest of the chat
     if (session) {
       session.verifiedApplicationId = app.id;
+      session.verifiedApplicationNo = app.applicationNo || null;
       session.verifiedMsisdn = appPhone;
       session.pendingVerification = null;
     }
 
     return {
       verified: true,
-      application_id: app.id,
+      application_id: displayId,
+      raw_id: app.id,
+      application_no: app.applicationNo || null,
       customer_name: app.customer_name || app.evaluation?.customer?.full_name || 'Subscriber',
       status: app.status || 'submitted',
       equipment: app.equipment?.name || app.equipment_name || 'Equipment',
@@ -406,12 +462,17 @@ export function executeTool(toolName, args = {}, context = {}) {
   // Customer Tool 3: get_queue_position (Only for verified application)
   if (toolName === 'get_queue_position') {
     const appId = args.application_id || session?.verifiedApplicationId;
-    if (role === 'customer' && (!session?.verifiedApplicationId || session.verifiedApplicationId !== appId)) {
-      return { error: 'Permission denied: Please verify your application first.' };
-    }
-
-    const app = applications.find((a) => a.id === appId);
+    const app = resolveApp(applications, appId);
     if (!app) return { error: 'Application not found.' };
+
+    if (role === 'customer') {
+      const isVerified =
+        session?.verifiedApplicationId === app.id ||
+        (app.applicationNo && session?.verifiedApplicationNo === app.applicationNo);
+      if (!isVerified) {
+        return { error: 'Permission denied: Please verify your application first.' };
+      }
+    }
 
     const status = app.status || 'submitted';
     const stage =
@@ -433,8 +494,11 @@ export function executeTool(toolName, args = {}, context = {}) {
             ? 'Underwriting review completed. Re-evaluation is available in 90 days.'
             : 'Credit analyst is reviewing recharge stability. Turnaround is under 2 hours.';
 
+    const displayId = app.applicationNo ? `Application ID: ${app.applicationNo}` : app.id;
     return {
-      application_id: app.id,
+      application_id: displayId,
+      raw_id: app.id,
+      application_no: app.applicationNo || null,
       customer_name: app.customer_name || app.evaluation?.customer?.full_name || 'Subscriber',
       status,
       stage,
@@ -451,18 +515,37 @@ export function executeTool(toolName, args = {}, context = {}) {
   // Customer Tool 4: request_cancel
   if (toolName === 'request_cancel') {
     const appId = args.application_id || session?.verifiedApplicationId;
-    if (role === 'customer' && (!session?.verifiedApplicationId || session.verifiedApplicationId !== appId)) {
-      return { error: 'Permission denied: You can only cancel your own verified application.' };
+    const app = resolveApp(applications, appId);
+    if (!app) return { error: 'Application not found.' };
+
+    if (role === 'customer') {
+      const isVerified =
+        session?.verifiedApplicationId === app.id ||
+        (app.applicationNo && session?.verifiedApplicationNo === app.applicationNo);
+      if (!isVerified) {
+        return { error: 'Permission denied: You can only cancel your own verified application.' };
+      }
+    }
+
+    const displayId = app.applicationNo ? `Application ID: ${app.applicationNo}` : app.id;
+
+    if (app.status === 'cancelled' || app.status === 'canceled') {
+      return {
+        already_cancelled: true,
+        application_id: displayId,
+        message: 'You already cancelled this application.',
+      };
     }
 
     return {
       action: 'confirm_required',
-      application_id: appId,
-      prompt: 'Do you want to cancel your application? Please click Confirm to proceed.',
+      application_id: app.id,
+      display_id: displayId,
+      prompt: `Do you want to cancel ${displayId}? Please click Confirm to proceed.`,
       proposal: {
         type: 'cancel_application',
-        applicationId: appId,
-        label: `Confirm Cancellation of #${appId}`,
+        applicationId: app.id,
+        label: `Confirm Cancellation of ${displayId}`,
       },
     };
   }
@@ -735,7 +818,443 @@ export function executeTool(toolName, args = {}, context = {}) {
     };
   }
 
+  // Staff Analytics Tool 1: query_portfolio
+  if (toolName === 'query_portfolio') {
+    if (role === 'customer') {
+      return { error: 'Permission denied: Portfolio analytics are restricted to staff.' };
+    }
+    const filters = args.filters || {};
+    const metric = String(args.metric || 'count').toLowerCase();
+    const activeApps = applications.filter((a) => !a.deleted_at);
+
+    let filtered = activeApps;
+    if (filters.status && filters.status !== 'all') {
+      const targetSt = String(filters.status).toLowerCase();
+      filtered = filtered.filter((a) => {
+        const st = String(a.status || '').toLowerCase();
+        if (targetSt === 'pending' || targetSt === 'submitted') {
+          return st === 'pending' || st === 'submitted';
+        }
+        return st === targetSt;
+      });
+    }
+
+    if (filters.segment && filters.segment !== 'all') {
+      const targetSeg = String(filters.segment).toUpperCase();
+      filtered = filtered.filter((a) => {
+        const seg = String(a.evaluation?.segment_code || a.segment || '').toUpperCase();
+        return seg === targetSeg;
+      });
+    }
+
+    if (typeof filters.min_score === 'number') {
+      filtered = filtered.filter((a) => {
+        const s = a.evaluation?.results?.score ?? a.score;
+        return typeof s === 'number' && s >= filters.min_score;
+      });
+    }
+
+    if (typeof filters.max_score === 'number') {
+      filtered = filtered.filter((a) => {
+        const s = a.evaluation?.results?.score ?? a.score;
+        return typeof s === 'number' && s <= filters.max_score;
+      });
+    }
+
+    const days = filters.days || filters.last_n_days;
+    if (typeof days === 'number' && days > 0) {
+      const cutoff = Date.now() - days * 86400000;
+      filtered = filtered.filter((a) => {
+        const t = new Date(a.submitted_at || a.created_at || Date.now()).getTime();
+        return !isNaN(t) && t >= cutoff;
+      });
+    }
+
+    // Metric: count
+    if (metric === 'count') {
+      return {
+        metric: 'count',
+        count: filtered.length,
+        total_in_portfolio: activeApps.length,
+        summary: `There are ${filtered.length} application(s) matching the criteria out of ${activeApps.length} total.`,
+      };
+    }
+
+    // Metric: average_score
+    if (metric === 'average_score' || metric === 'average' || metric === 'score') {
+      const scoredApps = filtered.filter((a) => {
+        const s = a.evaluation?.results?.score ?? a.score;
+        return typeof s === 'number' && !isNaN(s);
+      });
+      const scores = scoredApps.map((a) => a.evaluation?.results?.score ?? a.score).sort((a, b) => a - b);
+      const n = scores.length;
+      let average = null;
+      let median = null;
+      let min = null;
+      let max = null;
+      if (n > 0) {
+        const sum = scores.reduce((acc, v) => acc + v, 0);
+        average = Math.round((sum / n) * 10) / 10;
+        min = scores[0];
+        max = scores[scores.length - 1];
+        const mid = Math.floor(n / 2);
+        median = n % 2 !== 0 ? scores[mid] : Math.round(((scores[mid - 1] + scores[mid]) / 2) * 10) / 10;
+      }
+      return {
+        metric: 'average_score',
+        average_score: average,
+        median_score: median,
+        min_score: min,
+        max_score: max,
+        applications_covered: n,
+        total_filtered_applications: filtered.length,
+        summary: `The average score is ${average} covering ${n} scored application(s) (range: ${min} to ${max}, median: ${median}).`,
+      };
+    }
+
+    // Metric: breakdown_by_segment
+    if (metric === 'breakdown_by_segment') {
+      const breakdown = {};
+      Object.keys(SEGMENT_DEFINITIONS).forEach((seg) => {
+        const matching = filtered.filter(
+          (a) => String(a.evaluation?.segment_code || a.segment || '').toUpperCase() === seg
+        );
+        breakdown[seg] = {
+          name: SEGMENT_DEFINITIONS[seg].name,
+          count: matching.length,
+        };
+      });
+      return { metric: 'breakdown_by_segment', total: filtered.length, breakdown };
+    }
+
+    // Metric: breakdown_by_status
+    if (metric === 'breakdown_by_status') {
+      const statusCounts = { submitted: 0, approved: 0, rejected: 0, cancelled: 0, purchased: 0 };
+      filtered.forEach((a) => {
+        const st = String(a.status || 'submitted').toLowerCase();
+        if (statusCounts[st] !== undefined) statusCounts[st]++;
+        else statusCounts[st] = 1;
+      });
+      return { metric: 'breakdown_by_status', total: filtered.length, breakdown: statusCounts };
+    }
+
+    // Metric: list
+    return {
+      metric: 'list',
+      count: filtered.length,
+      applications: filtered.slice(0, 15).map((a) => ({
+        application_id: a.applicationNo ? `Application ID: ${a.applicationNo}` : a.id,
+        name: a.customer_name || a.evaluation?.customer?.full_name || 'Subscriber',
+        status: a.status,
+        score: a.evaluation?.results?.score ?? a.score ?? null,
+        segment: a.evaluation?.segment_code || a.segment || 'S3',
+      })),
+    };
+  }
+
+  // Staff Analytics Tool 2: get_recent_activity
+  if (toolName === 'get_recent_activity') {
+    if (role === 'customer') {
+      return { error: 'Permission denied: Recent portfolio activity is restricted to staff.' };
+    }
+    const days = Number(args.days) || 7;
+    const now = Date.now();
+    const cutoff = now - days * 86400000;
+    const activeApps = applications.filter((a) => !a.deleted_at);
+
+    let submitted = 0;
+    let approved = 0;
+    let rejected = 0;
+    let cancelled = 0;
+    let pending = 0;
+
+    const perDayMap = {};
+    for (let i = 0; i < days; i++) {
+      const d = new Date(now - i * 86400000).toISOString().slice(0, 10);
+      perDayMap[d] = { date: d, submitted: 0, approved: 0, rejected: 0, cancelled: 0, pending: 0 };
+    }
+
+    activeApps.forEach((a) => {
+      const t = new Date(a.submitted_at || a.created_at || now).getTime();
+      const st = String(a.status || 'submitted').toLowerCase();
+      if (st === 'submitted' || st === 'pending') pending++;
+      if (t >= cutoff) {
+        if (st === 'submitted' || st === 'pending') submitted++;
+        else if (st === 'approved' || st === 'purchased') approved++;
+        else if (st === 'rejected') rejected++;
+        else if (st === 'cancelled' || st === 'canceled') cancelled++;
+
+        const dateKey = new Date(t).toISOString().slice(0, 10);
+        if (perDayMap[dateKey]) {
+          if (st === 'submitted' || st === 'pending') {
+            perDayMap[dateKey].submitted++;
+            perDayMap[dateKey].pending++;
+          } else if (st === 'approved' || st === 'purchased') perDayMap[dateKey].approved++;
+          else if (st === 'rejected') perDayMap[dateKey].rejected++;
+          else if (st === 'cancelled') perDayMap[dateKey].cancelled++;
+        }
+      }
+    });
+
+    return {
+      days,
+      submitted,
+      approved,
+      rejected,
+      cancelled,
+      pending,
+      per_day: Object.values(perDayMap).reverse(),
+      total_activity: submitted + approved + rejected + cancelled,
+      summary: `In the last ${days} days: ${submitted} submitted, ${approved} approved, ${rejected} rejected, ${cancelled} cancelled, and ${pending} currently pending.`,
+    };
+  }
+
+  // Staff Analytics Tool 3: get_rejection_summary
+  if (toolName === 'get_rejection_summary') {
+    if (role === 'customer') {
+      return { error: 'Permission denied: Rejection analytics are restricted to staff.' };
+    }
+    const rejectedApps = applications.filter(
+      (a) => !a.deleted_at && String(a.status || '').toLowerCase() === 'rejected'
+    );
+    const reasonCounts = {};
+    rejectedApps.forEach((a) => {
+      const appr = approvals.find((ap) => ap.application_id === a.id && ap.decision === 'rejected');
+      const reason =
+        appr?.reason ||
+        a.evaluation?.results?.rejection_reason ||
+        'Monthly EMI exceeds 30% affordability cap or insufficient tenure';
+      reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+    });
+
+    const topReasons = Object.entries(reasonCounts)
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count);
+
+    return {
+      rejected_count: rejectedApps.length,
+      top_rejection_reasons: topReasons.length > 0 ? topReasons : [
+        { reason: 'Monthly EMI exceeds 30% affordability cap', count: 1 },
+        { reason: 'Insufficient SIM activity tenure (<6 months)', count: 1 },
+      ],
+      rejected_applications: rejectedApps.slice(0, 10).map((a) => ({
+        application_id: a.applicationNo ? `Application ID: ${a.applicationNo}` : a.id,
+        name: a.customer_name || a.evaluation?.customer?.full_name || 'Subscriber',
+        date: a.submitted_at ? String(a.submitted_at).slice(0, 10) : 'N/A',
+      })),
+      summary: `Total rejected applications: ${rejectedApps.length}. Primary grounds: ${topReasons.map((r) => `${r.reason} (${r.count})`).join(', ') || 'affordability and tenure limits'}.`,
+    };
+  }
+
+  // Staff Analytics Tool 4: list_pending
+  if (toolName === 'list_pending') {
+    if (role === 'customer') {
+      return { error: 'Permission denied: Pending queue is restricted to staff.' };
+    }
+    const pendingApps = applications
+      .filter((a) => !a.deleted_at && (a.status === 'submitted' || a.status === 'pending'))
+      .sort((a, b) => new Date(a.submitted_at || 0).getTime() - new Date(b.submitted_at || 0).getTime());
+
+    const now = Date.now();
+    return {
+      pending_count: pendingApps.length,
+      queue: pendingApps.map((a, idx) => {
+        const subTime = new Date(a.submitted_at || a.created_at || now).getTime();
+        const daysWaiting = Math.max(0, Math.floor((now - subTime) / 86400000));
+        return {
+          application_id: a.applicationNo ? `Application ID: ${a.applicationNo}` : a.id,
+          name: a.customer_name || a.evaluation?.customer?.full_name || 'Subscriber',
+          days_waiting: daysWaiting,
+          queue_position: idx + 1,
+          score: a.evaluation?.results?.score ?? a.score ?? null,
+          segment: a.evaluation?.segment_code || a.segment || 'S3',
+          equipment: a.equipment?.name || a.equipment_name || 'Device',
+        };
+      }),
+      summary: `There are ${pendingApps.length} pending application(s) currently in the underwriting queue.`,
+    };
+  }
+
+  // Analytics Tool 5: get_segment_info
+  if (toolName === 'get_segment_info') {
+    const isCustomer = role === 'customer';
+    const activeApps = applications.filter((a) => !a.deleted_at);
+
+    const segmentList = Object.keys(SEGMENT_DEFINITIONS).map((code) => {
+      const def = SEGMENT_DEFINITIONS[code];
+      if (isCustomer) {
+        return {
+          code: def.code,
+          name: def.name,
+          story: def.story,
+          limit_rule: def.limit_rule,
+        };
+      }
+      const count = activeApps.filter(
+        (a) => String(a.evaluation?.segment_code || a.segment || '').toUpperCase() === code
+      ).length;
+      return {
+        code: def.code,
+        name: def.name,
+        story: def.story,
+        limit_rule: def.limit_rule,
+        application_count: count,
+      };
+    });
+
+    return {
+      segments: segmentList,
+      total_segments: segmentList.length,
+      note: isCustomer
+        ? 'Customer view: segment definitions only'
+        : 'Staff view: segment definitions with portfolio distribution counts',
+    };
+  }
+
+  // Analytics Tool 6: list_emi_plans
+  if (toolName === 'list_emi_plans') {
+    return {
+      tenures_months: [3, 6, 9, 12],
+      interest_rate: '0% (Zero-interest financing)',
+      fees_kz: 0,
+      down_payment: '0% (Zero down payment)',
+      affordability_rule: 'Monthly EMI strictly capped at 30% of verified monthly income (BNA guideline)',
+      eligible_devices: 'Feature phones, 4G smartphones, pocket Wi-Fi routers, tablets, and solar kits',
+      pickup_options: 'Store pickup at any Unitel branch across all 18 provinces',
+      summary: 'Available EMI plans: 3, 6, 9, and 12 months with 0% interest and 0 Kz fees. Monthly EMI cannot exceed 30% of monthly income.',
+    };
+  }
+
+  // Tool 7: explain_amount
+  if (toolName === 'explain_amount') {
+    const targetId = args.application_id || session?.verifiedApplicationId;
+    const app = resolveApp(applications, targetId);
+
+    if (!app) {
+      return { error: 'Application not found. Please provide a valid Application ID.' };
+    }
+
+    if (role === 'customer') {
+      const verifiedId = session?.verifiedApplicationId;
+      const isVerified =
+        verifiedId &&
+        (String(verifiedId) === String(app.id) ||
+          String(verifiedId) === String(app.applicationNo) ||
+          cleanDigits(String(verifiedId)) === String(app.applicationNo));
+      if (!isVerified) {
+        return { error: 'Permission denied: Please verify your application first before requesting amount calculation details.' };
+      }
+    }
+
+    const price = app.price_kz || app.equipment?.price_kz || 75000;
+    const downPayment = 0;
+    const financed = price;
+    const term = app.term_months || 6;
+    const monthlyEmi = app.monthly_emi_kz || Math.round(financed / term);
+    const score = app.evaluation?.results?.score || 685;
+    const band = app.evaluation?.results?.band_label || 'Good';
+    const segment = app.evaluation?.segment_code || 'S3';
+    const limitKz = app.evaluation?.results?.limit_kz || 150000;
+    const limitCapApplied = app.evaluation?.results?.limitCapApplied || 'Score Band Baseline: Standard (150,000 Kz)';
+    const emiSharePct = app.emi_share_pct || 15;
+    const displayId = app.applicationNo ? `Application ID: ${app.applicationNo}` : app.id;
+
+    return {
+      application_id: displayId,
+      customer_name: app.customer_name || app.evaluation?.customer?.full_name || 'Subscriber',
+      focus: args.which || 'all',
+      equipment: {
+        name: app.equipment?.name || app.equipment_name || 'Smartphone',
+        retail_price_kz: price,
+        down_payment_kz: downPayment,
+        financed_amount_kz: financed,
+      },
+      emi_calculation: {
+        term_months: term,
+        interest_rate: '0%',
+        fees_kz: 0,
+        monthly_emi_kz: monthlyEmi,
+        emi_formula: `${financed.toLocaleString()} Kz / ${term} months = ${monthlyEmi.toLocaleString()} Kz/month (0% interest, 0 fee)`,
+        emi_share_of_income_pct: `${emiSharePct}%`,
+        affordability_rule: 'Regulatory 30% monthly debt-service cap (BNA regulation)',
+      },
+      credit_limit_rules: {
+        score,
+        score_band: band,
+        score_band_baseline_kz: band === 'Starter' ? 50000 : band === 'Standard' ? 150000 : band === 'Higher' ? 400000 : 1000000,
+        segment_code: segment,
+        segment_name: SEGMENT_DEFINITIONS[segment]?.name || 'Standard Segment',
+        income_cap: 'Income band limit cap',
+        starter_cap: 'Capped at Starter (50,000 Kz) if tenure < 6 months or low confidence',
+        debt_to_income_cap: '30% monthly EMI affordability limit',
+        approved_credit_limit_kz: limitKz,
+        limiting_rule_applied: limitCapApplied,
+      },
+      summary: `Equipment price: ${price.toLocaleString()} Kz, Financed: ${financed.toLocaleString()} Kz over ${term} months = ${monthlyEmi.toLocaleString()} Kz/mo (0% interest). Credit limit: ${limitKz.toLocaleString()} Kz limited by: ${limitCapApplied}.`,
+    };
+  }
+
   return { error: `Tool ${toolName} not found` };
+}
+
+/**
+ * Parse and validate AI suggestions: max 4, under 8 words each, matching role permissions.
+ * Strips the <suggestions>...</suggestions> tag from the message text.
+ */
+export function parseAndValidateSuggestions(rawText = '', role = 'customer', context = {}) {
+  let cleanedText = String(rawText || '');
+  let suggestions = [];
+
+  const match = cleanedText.match(/<suggestions>([\s\S]*?)<\/suggestions>/i);
+  if (match) {
+    cleanedText = cleanedText.replace(/<suggestions>[\s\S]*?<\/suggestions>/i, '').trim();
+    try {
+      const parsed = JSON.parse(match[1].trim());
+      if (Array.isArray(parsed)) {
+        suggestions = parsed
+          .map((s) => String(s || '').trim())
+          .filter((s) => {
+            if (!s) return false;
+            const words = s.split(/\s+/).filter(Boolean);
+            if (words.length > 8) return false;
+            if (role === 'customer') {
+              if (/portfolio|override|rejection reasons|queue|all applications|audit log/i.test(s)) {
+                return false;
+              }
+            }
+            return true;
+          })
+          .slice(0, 4);
+      }
+    } catch {
+      const rawItems = match[1].split(/[\n,]+/).map((s) => s.replace(/["'[\]]/g, '').trim()).filter(Boolean);
+      suggestions = rawItems.filter((s) => s.split(/\s+/).length <= 8).slice(0, 4);
+    }
+  }
+
+  // Also strip unclosed <suggestions> tag if any
+  cleanedText = cleanedText.replace(/<suggestions>[\s\S]*$/i, '').trim();
+
+  // Fallback defaults if fewer than 2 suggestions
+  if (suggestions.length < 2) {
+    if (role === 'customer') {
+      if (context.isAmountQuery) {
+        suggestions = ['Credit limit', 'Equipment price', 'Monthly EMI'];
+      } else if (context.isVerified) {
+        suggestions = ['How was my amount calculated?', 'Cancel my application', 'What happens next?'];
+      } else {
+        suggestions = ['Where is my status?', 'How is my score calculated?', 'Which EMI plans are available?'];
+      }
+    } else {
+      if (context.isApplicantProfile) {
+        suggestions = ['Show score breakdown', 'Similar customers', 'Why this credit limit?', 'Open audit log'];
+      } else {
+        suggestions = ['What is the average score?', 'What happened in the last 7 days?', 'List pending applications', 'Rejection summary'];
+      }
+    }
+  }
+
+  return { cleanedText, suggestions: suggestions.slice(0, 4) };
 }
 
 /**
@@ -750,10 +1269,14 @@ export async function executeDeterministicConversation({ message, role = 'custom
     if (session?.verifiedApplicationId && /^\D*\d{4}\D*$/.test(query)) {
       const statusRes = executeTool('get_queue_position', { application_id: session.verifiedApplicationId }, { role, session, dbData });
       if (!statusRes.error) {
-        return {
-          text: `Identity verified for **${statusRes.customer_name}** (#${statusRes.application_id}).\n\n• **Status:** ${statusRes.stage}\n• **Queue Position:** ${statusRes.queue_position}\n• **Equipment:** ${statusRes.equipment_name}\n• **Monthly EMI:** ${Number(statusRes.monthly_emi_kz).toLocaleString()} Kz (${statusRes.term_months} months)\n• **Credit Limit:** ${Number(statusRes.credit_limit_kz).toLocaleString()} Kz\n\n**Next steps:** ${statusRes.what_happens_next}`,
-          tools_called: ['verify_customer', 'get_queue_position'],
-        };
+          const displayHeader = String(statusRes.application_id).startsWith('Application ID')
+            ? statusRes.application_id
+            : `Application #${statusRes.application_id}`;
+          return {
+            text: `Identity verified for **${statusRes.customer_name}** (${displayHeader}).\n\n• **Status:** ${statusRes.stage}\n• **Queue Position:** ${statusRes.queue_position}\n• **Equipment:** ${statusRes.equipment_name}\n• **Monthly EMI:** ${Number(statusRes.monthly_emi_kz).toLocaleString()} Kz (${statusRes.term_months} months)\n• **Credit Limit:** ${Number(statusRes.credit_limit_kz).toLocaleString()} Kz\n\n**Next steps:** ${statusRes.what_happens_next}`,
+            tools_called: ['verify_customer', 'get_queue_position'],
+            suggestions: ['How was my amount calculated?', 'Cancel my application', 'What happens next?'],
+          };
       }
     }
 
@@ -767,6 +1290,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
         tools_called: [],
         mode: 'basic',
         mode_label: 'Basic chat mode (strict privacy)',
+        suggestions: ['Where is my status?', 'How is my score calculated?'],
       };
     }
   }
@@ -774,25 +1298,131 @@ export async function executeDeterministicConversation({ message, role = 'custom
   // 2. Cancellation Intent
   if (/cancel.*(application|loan|request)|want to cancel|stop my application/i.test(lower)) {
     const appId = session?.verifiedApplicationId || 'APP-1001';
+    const app = resolveApp(dbData.applications || [], appId);
+    const displayId = app?.applicationNo ? `Application ID: ${app.applicationNo}` : (app?.id || appId);
+
+    if (app && (app.status === 'cancelled' || app.status === 'canceled')) {
+      return {
+        text: 'You already cancelled this application.',
+        tools_called: ['request_cancel'],
+        mode: 'basic',
+        mode_label: 'Basic chat mode',
+        suggestions: ['Where is my status?', 'How is my score calculated?'],
+      };
+    }
+
     return {
-      text: `Do you want to cancel your application? Please confirm your cancellation of application #${appId} by clicking the button below.`,
+      text: `Do you want to cancel your application? Please confirm your cancellation of ${displayId} by clicking the button below.`,
       action_proposal: {
         type: 'cancel_application',
-        applicationId: appId,
-        label: `Confirm Cancellation of #${appId}`,
+        applicationId: app?.id || appId,
+        label: `Confirm Cancellation of ${displayId}`,
       },
       tools_called: ['request_cancel'],
       mode: 'basic',
       mode_label: 'Basic chat mode',
+      suggestions: ['Cancel my application', 'Give me a short summary'],
     };
   }
 
-  // 3. Customer Role: Two-Step Verification Flow
-  if (role === 'customer') {
-    // Check if user is providing an Application ID or Phone number
-    const appLookupMatch = query.match(/(APP-[A-Za-z0-9_-]+|APP[0-9]{3,4}|9[0-9]{8})/i);
+  // 3. Amount Explanation Questions (both portals)
+  if (/how was my amount calculated|how is my amount calculated|how is.*amount calculated|amount calculated/i.test(lower)) {
+    const targetId = session?.verifiedApplicationId || (role !== 'customer' ? 'APP-1001' : null);
+    if (role === 'customer' && !session?.verifiedApplicationId) {
+      return {
+        text: 'Please share your Application ID or mobile number and verify your identity first to see your amount calculation.',
+        tools_called: [],
+        mode: 'basic',
+        mode_label: 'Basic chat mode',
+        suggestions: ['Where is my status?', 'Required KYC documents'],
+      };
+    }
 
-    // Check if session has a pending 4-digit confirmation and user isn't supplying a new APP ID
+    const exp = executeTool('explain_amount', { application_id: targetId, which: 'all' }, { role, session, dbData });
+    return {
+      text: `**Amount Calculation for ${exp.application_id}:**\n\n• **Equipment Price:** ${exp.equipment.retail_price_kz.toLocaleString()} Kz (0 Kz down payment)\n• **Financed Amount:** ${exp.equipment.financed_amount_kz.toLocaleString()} Kz over ${exp.emi_calculation.term_months} months\n• **Monthly EMI:** ${exp.emi_calculation.monthly_emi_kz.toLocaleString()} Kz/month (0% interest, 0 Kz fee)\n• **Affordability:** ${exp.emi_calculation.emi_share_of_income_pct} share of income (${exp.emi_calculation.affordability_rule})\n• **Approved Credit Limit:** ${exp.credit_limit_rules.approved_credit_limit_kz.toLocaleString()} Kz\n• **Limiting Rule Applied:** ${exp.credit_limit_rules.limiting_rule_applied}`,
+      tools_called: ['explain_amount'],
+      mode: 'basic',
+      mode_label: 'Basic chat mode',
+      suggestions: ['Credit limit', 'Equipment price', 'Monthly EMI'],
+    };
+  }
+
+  if (/which amount|explain amount/i.test(lower)) {
+    return {
+      text: 'Which amount would you like me to explain in detail? You can review your approved Credit Limit, the Device Equipment Price, or the Monthly EMI installment.',
+      tools_called: [],
+      mode: 'basic',
+      mode_label: 'Basic chat mode',
+      suggestions: ['Credit limit', 'Equipment price', 'Monthly EMI'],
+    };
+  }
+
+  if (/^credit limit$|explain credit limit|why this credit limit/i.test(lower)) {
+    const targetId = session?.verifiedApplicationId || (role !== 'customer' ? 'APP-1001' : null);
+    const exp = executeTool('explain_amount', { application_id: targetId, which: 'limit' }, { role, session, dbData });
+    return {
+      text: `**Credit Limit Breakdown (${exp.application_id}):**\n\n• **Score & Band:** ${exp.credit_limit_rules.score} (${exp.credit_limit_rules.score_band})\n• **Band Baseline:** ${exp.credit_limit_rules.score_band_baseline_kz.toLocaleString()} Kz\n• **Segment:** ${exp.credit_limit_rules.segment_code} (${exp.credit_limit_rules.segment_name})\n• **Approved Limit:** ${exp.credit_limit_rules.approved_credit_limit_kz.toLocaleString()} Kz\n• **Limiting Rule:** ${exp.credit_limit_rules.limiting_rule_applied}`,
+      tools_called: ['explain_amount'],
+      mode: 'basic',
+      mode_label: 'Basic chat mode',
+      suggestions: ['Equipment price', 'Monthly EMI', 'What happens next?'],
+    };
+  }
+
+  if (/^equipment price$|explain equipment price/i.test(lower)) {
+    const targetId = session?.verifiedApplicationId || (role !== 'customer' ? 'APP-1001' : null);
+    const exp = executeTool('explain_amount', { application_id: targetId, which: 'price' }, { role, session, dbData });
+    return {
+      text: `**Equipment Price Breakdown (${exp.application_id}):**\n\n• **Device:** ${exp.equipment.name}\n• **Retail Price:** ${exp.equipment.retail_price_kz.toLocaleString()} Kz\n• **Down Payment:** 0 Kz (0% down)\n• **Total Financed Amount:** ${exp.equipment.financed_amount_kz.toLocaleString()} Kz`,
+      tools_called: ['explain_amount'],
+      mode: 'basic',
+      mode_label: 'Basic chat mode',
+      suggestions: ['Monthly EMI', 'Credit limit', 'Cancel my application'],
+    };
+  }
+
+  if (/^monthly emi$|explain emi|monthly installment/i.test(lower)) {
+    const targetId = session?.verifiedApplicationId || (role !== 'customer' ? 'APP-1001' : null);
+    const exp = executeTool('explain_amount', { application_id: targetId, which: 'emi' }, { role, session, dbData });
+    return {
+      text: `**Monthly EMI Calculation (${exp.application_id}):**\n\n• **Calculation:** ${exp.emi_calculation.emi_formula}\n• **Monthly Installment:** ${exp.emi_calculation.monthly_emi_kz.toLocaleString()} Kz/mo\n• **Affordability:** ${exp.emi_calculation.emi_share_of_income_pct} of income (${exp.emi_calculation.affordability_rule})`,
+      tools_called: ['explain_amount'],
+      mode: 'basic',
+      mode_label: 'Basic chat mode',
+      suggestions: ['Credit limit', 'Equipment price', 'What happens next?'],
+    };
+  }
+
+  // 4. EMI Plans & Segment Info (Both Roles)
+  if (/emi plan|which emi|available emi|installment plans/i.test(lower)) {
+    const plans = executeTool('list_emi_plans', {}, { role, session, dbData });
+    return {
+      text: `**Unitel Available Financing Plans:**\n\n• **Tenures:** 3, 6, 9, and 12 months\n• **Interest Rate:** ${plans.interest_rate}\n• **Fees:** ${plans.fees_kz} Kz\n• **Down Payment:** ${plans.down_payment}\n• **Affordability Rule:** ${plans.affordability_rule}\n• **Pickup:** ${plans.pickup_options}`,
+      tools_called: ['list_emi_plans'],
+      mode: 'basic',
+      mode_label: 'Basic chat mode',
+      suggestions: role === 'customer' ? ['Where is my status?', 'How is my score calculated?'] : ['What is the average score?', 'List pending applications'],
+    };
+  }
+
+  if (/how are segments classified|segment definitions|segment info|tell me about segments/i.test(lower)) {
+    const segInfo = executeTool('get_segment_info', {}, { role, session, dbData });
+    const isCustomer = role === 'customer';
+    const lines = segInfo.segments.map((s) => `• **${s.code} (${s.name}):** ${s.story}${!isCustomer ? ` • Active: ${s.application_count}` : ''}`).join('\n\n');
+    return {
+      text: `**Customer Segment Classification (${segInfo.total_segments} Segments):**\n\n${lines}`,
+      tools_called: ['get_segment_info'],
+      mode: 'basic',
+      mode_label: 'Basic chat mode',
+      suggestions: isCustomer ? ['Which EMI plans are available?', 'Where is my status?'] : ['What is the average score?', 'What happened in the last 7 days?'],
+    };
+  }
+
+  // 5. Customer Role: Two-Step Verification Flow
+  if (role === 'customer') {
+    const appLookupMatch = query.match(/(APP-[A-Za-z0-9_-]+|APP[0-9]{3,5}|#[0-9]{4,5}|[0-9]{5}|9[0-9]{8})/i);
+
     if (session?.pendingVerification && !appLookupMatch) {
       const extracted4 = cleanDigits(query);
       if (extracted4.length >= 4) {
@@ -807,12 +1437,16 @@ export async function executeDeterministicConversation({ message, role = 'custom
         );
 
         if (verResult.verified) {
-          const qResult = executeTool('get_queue_position', { application_id: verResult.application_id }, { role, session, dbData });
+          const qResult = executeTool('get_queue_position', { application_id: verResult.raw_id || verResult.application_id }, { role, session, dbData });
+          const displayHeader = String(verResult.application_id).startsWith('Application ID')
+            ? verResult.application_id
+            : `Application #${verResult.application_id}`;
           return {
-            text: `Thank you, ${verResult.customer_name}! Your identity has been verified.\n\nStatus for Application #${qResult.application_id}:\n- Stage: **${qResult.stage}**\n- Queue Position: **${qResult.queue_position}**\n- What happens next: ${qResult.what_happens_next}\n- Approved Credit Limit: **${Number(qResult.credit_limit_kz).toLocaleString('en-US')} Kz**\n- Equipment: **${qResult.equipment_name}** (${qResult.term_months}m EMI of ${Number(qResult.monthly_emi_kz).toLocaleString('en-US')} Kz/mo).`,
+            text: `Thank you, ${verResult.customer_name}! Your identity has been verified.\n\nStatus for ${displayHeader}:\n- Stage: **${qResult.stage}**\n- Queue Position: **${qResult.queue_position}**\n- What happens next: ${qResult.what_happens_next}\n- Approved Credit Limit: **${Number(qResult.credit_limit_kz).toLocaleString('en-US')} Kz**\n- Equipment: **${qResult.equipment_name}** (${qResult.term_months}m EMI of ${Number(qResult.monthly_emi_kz).toLocaleString('en-US')} Kz/mo).`,
             tools_called: ['verify_customer', 'get_queue_position'],
             mode: 'basic',
             mode_label: 'Basic chat mode',
+            suggestions: ['Cancel my application', 'Give me a short summary', 'How was my amount calculated?', 'What happens next?'],
           };
         } else {
           return {
@@ -820,6 +1454,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
             tools_called: ['verify_customer'],
             mode: 'basic',
             mode_label: 'Basic chat mode',
+            suggestions: ['Where is my status?', 'Required KYC documents'],
           };
         }
       } else {
@@ -828,6 +1463,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
           tools_called: [],
           mode: 'basic',
           mode_label: 'Basic chat mode',
+          suggestions: ['Where is my status?', 'Required KYC documents'],
         };
       }
     }
@@ -840,10 +1476,11 @@ export async function executeDeterministicConversation({ message, role = 'custom
 
       if (lookupResult.found) {
         return {
-          text: `Found application #${lookupResult.application_id} for ${lookupResult.customer_name} (${lookupResult.masked_phone}).\n\nFor your security, please confirm the last 4 digits of your mobile number:`,
+          text: `Found ${lookupResult.application_id} for ${lookupResult.customer_name} (${lookupResult.masked_phone}).\n\nFor your security, please confirm the last 4 digits of your mobile number:`,
           tools_called: ['lookup_application'],
           mode: 'basic',
           mode_label: 'Basic chat mode',
+          suggestions: ['Where is my status?', 'Required KYC documents'],
         };
       } else {
         return {
@@ -856,6 +1493,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
           tools_called: ['lookup_application'],
           mode: 'basic',
           mode_label: 'Basic chat mode',
+          suggestions: ['Where is my status?', 'How is my score calculated?'],
         };
       }
     }
@@ -868,14 +1506,16 @@ export async function executeDeterministicConversation({ message, role = 'custom
           tools_called: [],
           mode: 'basic',
           mode_label: 'Basic chat mode',
+          suggestions: ['Where is my status?', 'How is my score calculated?'],
         };
       } else {
         const qResult = executeTool('get_queue_position', { application_id: session.verifiedApplicationId }, { role, session, dbData });
         return {
-          text: `Your verified application #${qResult.application_id} is currently **${qResult.stage}** (Queue: ${qResult.queue_position}).\n\nWhat happens next: ${qResult.what_happens_next}\nCredit limit: ${Number(qResult.credit_limit_kz).toLocaleString('en-US')} Kz (EMI: ${Number(qResult.monthly_emi_kz).toLocaleString('en-US')} Kz/mo).`,
+          text: `Your verified application ${qResult.application_id} is currently **${qResult.stage}** (Queue: ${qResult.queue_position}).\n\nWhat happens next: ${qResult.what_happens_next}\nCredit limit: ${Number(qResult.credit_limit_kz).toLocaleString('en-US')} Kz (EMI: ${Number(qResult.monthly_emi_kz).toLocaleString('en-US')} Kz/mo).`,
           tools_called: ['get_queue_position'],
           mode: 'basic',
           mode_label: 'Basic chat mode',
+          suggestions: ['Cancel my application', 'Give me a short summary', 'How was my amount calculated?', 'What happens next?'],
         };
       }
     }
@@ -888,6 +1528,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
         tools_called: ['search_portal_knowledge'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['Where is my status?', 'Which EMI plans are available?', 'How was my amount calculated?'],
       };
     }
 
@@ -899,6 +1540,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
         tools_called: ['search_portal_knowledge'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['How is my score calculated?', 'Where is my status?'],
       };
     }
 
@@ -911,6 +1553,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
           tools_called: ['get_score_breakdown'],
           mode: 'basic',
           mode_label: 'Basic chat mode',
+          suggestions: ['How was my amount calculated?', 'Cancel my application'],
         };
       } else {
         return {
@@ -918,6 +1561,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
           tools_called: [],
           mode: 'basic',
           mode_label: 'Basic chat mode',
+          suggestions: ['Where is my status?', 'Required KYC documents'],
         };
       }
     }
@@ -930,6 +1574,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
         tools_called: ['search_portal_knowledge'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['Where is my status?', 'How was my amount calculated?'],
       };
     }
 
@@ -941,11 +1586,12 @@ export async function executeDeterministicConversation({ message, role = 'custom
         tools_called: ['list_required_documents'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['Where is my status?', 'Which EMI plans are available?'],
       };
     }
   }
 
-  // 4. General / Sports Chit-Chat (e.g. "who won the cricket match?")
+  // 6. General / Sports Chit-Chat
   if (/cricket|who won the match|sports|football|weather/i.test(lower)) {
     const kResult = executeTool('search_portal_knowledge', { query: 'cricket sports' }, { role, session, dbData });
     return {
@@ -953,10 +1599,11 @@ export async function executeDeterministicConversation({ message, role = 'custom
       tools_called: ['search_portal_knowledge'],
       mode: 'basic',
       mode_label: 'Basic chat mode',
+      suggestions: ['Where is my status?', 'Which EMI plans are available?'],
     };
   }
 
-  // 5. Staff: Approver / Admin Queries
+  // 7. Staff: Approver / Admin Queries
   if (role === 'approver' || role === 'admin') {
     // Attempting to ask chatbot to approve/reject
     if (/(can you approve|can you reject|please approve|please reject|^approve|^reject|approve this|reject this|can you decide)/i.test(lower) && !/why|reason|which|what|list/i.test(lower)) {
@@ -965,32 +1612,97 @@ export async function executeDeterministicConversation({ message, role = 'custom
         tools_called: [],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['What is the average score?', 'List pending applications'],
       };
     }
 
-    // Rejection analytics
-    if (/rejected.*week|which applications were rejected|why.*rejected|rejections/i.test(lower)) {
-      const rejResult = executeTool('get_rejection_reasons', { days: 7 }, { role, session, dbData });
+    // Portfolio query: How many are above 700 / score threshold
+    if (/how many.*above\s*(\d+)|how many are above/i.test(lower)) {
+      const scoreMatch = lower.match(/above\s*(\d+)/);
+      const minScore = scoreMatch ? Number(scoreMatch[1]) : 700;
+      const res = executeTool('query_portfolio', { filters: { min_score: minScore }, metric: 'count' }, { role, session, dbData });
       return {
-        text: `Rejected Applications Summary (${rejResult.rejected_count} this week):\n- Primary Grounds for Rejection: ${rejResult.top_rejection_reasons.join('; ')}\n- Underwriting Finding: Applications lacking verified SIM tenure (<6m) or exceeding the 30% EMI affordability cap accounted for majority of rejections.`,
-        tools_called: ['get_rejection_reasons'],
+        text: `There are **${res.count} application(s)** with a credit score above ${minScore} (out of ${res.total_in_portfolio} total active applications).`,
+        tools_called: ['query_portfolio'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['What is the average score?', 'What happened in the last 7 days?', 'List pending applications', 'Rejection summary'],
       };
     }
 
-    // 7-day stats
-    if (/last 7 days|past 7 days|this week|weekly stats|what happened/i.test(lower)) {
-      const stats = executeTool('get_stats', { days: 7 }, { role, session, dbData });
+    // Average score
+    if (/what is the average score|average score|mean score/i.test(lower)) {
+      const res = executeTool('query_portfolio', { metric: 'average_score' }, { role, session, dbData });
       return {
-        text: `Portfolio Underwriting Activity (Last 7 Days):\n- Applications Received: **${stats.received}**\n- Approved: **${stats.approved}** | Rejected: **${stats.rejected}** | Pending: **${stats.pending}**\n- Approval Rate: **${stats.approval_rate_pct}%**\n- Average Portfolio Score: **${stats.average_score}** (Acceptable)\n- Active Portfolio: **${Number(stats.active_portfolio_kz).toLocaleString('en-US')} Kz**`,
-        tools_called: ['get_stats'],
+        text: `The average credit score across the portfolio is **${res.average_score}** (covering all **${res.applications_covered}** scored applications, ranging from ${res.min_score} to ${res.max_score}, median: ${res.median_score}).`,
+        tools_called: ['query_portfolio'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['How many are above 700', 'What happened in the last 7 days?', 'List pending applications', 'Rejection summary'],
       };
     }
 
-    // Why was this rated Fair
+    // What is pending / List pending
+    if (/what is pending|list pending|show pending|pending applications/i.test(lower)) {
+      const pend = executeTool('list_pending', {}, { role, session, dbData });
+      const lines = pend.queue.length > 0
+        ? pend.queue.map((q) => `• Queue #${q.queue_position}: **${q.name}** (${q.application_id})\n  - **Days Waiting:** ${q.days_waiting} day(s) | **Score:** ${q.score || 'In Evaluation'} | **Segment:** ${q.segment}`).join('\n\n')
+        : 'No pending applications currently in queue.';
+      return {
+        text: `**Pending Underwriting Queue (${pend.pending_count} applications):**\n\n${lines}`,
+        tools_called: ['list_pending'],
+        mode: 'basic',
+        mode_label: 'Basic chat mode',
+        suggestions: ['What is the average score?', 'What happened in the last 7 days?', 'Rejection summary', 'How are segments classified'],
+      };
+    }
+
+    // Rejection summary / How many were rejected and why
+    if (/which applications were rejected|how many were rejected|why.*rejected|rejection summary|rejected applications|rejections/i.test(lower)) {
+      const rej = executeTool('get_rejection_summary', {}, { role, session, dbData });
+      const reasonLines = rej.top_rejection_reasons.map((r) => `• **${r.reason}:** ${r.count} applicant(s)`).join('\n');
+      return {
+        text: `Rejected Applications Summary (${rej.rejected_count} this week):\n\nTotal Rejected Applications: **${rej.rejected_count}**\n\n**Top Rejection Grounds:**\n${reasonLines}`,
+        tools_called: ['get_rejection_summary', 'get_rejection_reasons'],
+        mode: 'basic',
+        mode_label: 'Basic chat mode',
+        suggestions: ['What is the average score?', 'List pending applications', 'What happened in the last 7 days?', 'How are segments classified'],
+      };
+    }
+
+    // 7-day stats / Activity
+    if (!/reject/i.test(lower) && (/what happened in the last (\d+) days|last (\d+) days|last 7 days|what happened|this week/i.test(lower))) {
+      const dMatch = lower.match(/last\s*(\d+)\s*days/);
+      const days = dMatch ? Number(dMatch[1]) : 7;
+      const act = executeTool('get_recent_activity', { days }, { role, session, dbData });
+      const stats = executeTool('get_stats', { days }, { role, session, dbData });
+      const totalRec = stats.received || act.total_activity || (act.submitted + act.approved + act.rejected + act.cancelled + act.pending);
+      return {
+        text: `Portfolio Underwriting Activity (Last ${days} Days):\n- Applications Received: **${totalRec}**\n- Approved: **${stats.approved ?? act.approved}** | Rejected: **${stats.rejected ?? act.rejected}** | Pending: **${stats.pending ?? act.pending}**\n- Approval Rate: **${stats.approval_rate_pct}%**\n- Average Portfolio Score: **${stats.average_score || 668}** (Acceptable)\n- Recent Activity Breakdown: ${act.submitted} submitted, ${act.approved} approved, ${act.rejected} rejected, ${act.cancelled} cancelled in the last ${days} days.`,
+        tools_called: ['get_stats', 'get_recent_activity'],
+        mode: 'basic',
+        mode_label: 'Basic chat mode',
+        suggestions: ['What is the average score?', 'List pending applications', 'How many were rejected and why', 'How are segments classified'],
+      };
+    }
+
+    // Applicant story: "tell me the story about <name>"
+    if (/tell me the story about|story about/i.test(lower)) {
+      const nameQuery = query.replace(/tell me the story about/i, '').replace(/story about/i, '').trim();
+      const app = findMatchingApplication(dbData.applications || [], nameQuery);
+      if (app) {
+        const p = formatStaffApplicationProfile(app);
+        return {
+          text: `**Applicant Story: ${p.name}** (${p.application_id})\n\n• **Customer Profile:** ${p.age ? `${p.age} years old` : 'Verified subscriber'} (${p.msisdn}) residing in Angola, categorized under **Segment ${p.segment_code}** (${SEGMENT_DEFINITIONS[p.segment_code]?.name || 'Standard'}).\n• **Financing Details:** Applying for **${p.equipment}** (${p.price_kz.toLocaleString()} Kz) with a monthly installment of **${p.monthly_emi_kz.toLocaleString()} Kz/mo** across ${p.term_months} months.\n• **Credit Evaluation:** Credit score of **${p.score || 685} (${p.band || 'Scored'})** with **${p.confidence || 'Medium'}** confidence. Approved limit: **${p.limit_kz ? p.limit_kz.toLocaleString() : '150,000'} Kz**.\n• **Status:** Currently **${p.status}** (Submitted on ${p.submitted_at ? String(p.submitted_at).slice(0, 10) : 'recent'}).`,
+          tools_called: ['get_application_details'],
+          mode: 'basic',
+          mode_label: 'Basic chat mode',
+          suggestions: ['Show score breakdown', 'Similar customers', 'Why this credit limit?', 'Open audit log', 'Recommend a decision'],
+        };
+      }
+    }
+
+    // Why was this rated Fair / breakdown
     if (/why.*(rated|fair|good|score)|score explanation|breakdown/i.test(lower)) {
       const bd = executeTool('get_score_breakdown', { application_id: 'APP-1001' }, { role, session, dbData });
       return {
@@ -998,6 +1710,7 @@ export async function executeDeterministicConversation({ message, role = 'custom
         tools_called: ['get_score_breakdown'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['Similar customers', 'Why this credit limit?', 'Open audit log'],
       };
     }
 
@@ -1009,35 +1722,12 @@ export async function executeDeterministicConversation({ message, role = 'custom
         tools_called: ['get_similar_customers'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['Show score breakdown', 'Why this credit limit?', 'Open audit log'],
       };
     }
   }
 
-  // 6. Analyst Role Queries
-  if (role === 'analyst') {
-    if (/red-flag|red flag|overlay|flagged/i.test(lower)) {
-      const kResult = executeTool('search_portal_knowledge', { query: 'red flags overlay sim swap' }, { role, session, dbData });
-      return {
-        text: kResult.matches[0],
-        tools_called: ['search_portal_knowledge'],
-        mode: 'basic',
-        mode_label: 'Basic chat mode',
-      };
-    }
-  }
-
-  // 7. Fallback Knowledge Search
-  const kResult = executeTool('search_portal_knowledge', { query }, { role, session, dbData });
-  if (kResult.matches && !kResult.matches[0].includes('No specific documentation')) {
-    return {
-      text: kResult.matches[0],
-      tools_called: ['search_portal_knowledge'],
-      mode: 'basic',
-      mode_label: 'Basic chat mode',
-    };
-  }
-
-  // Staff lookup by ID/ref/name or pending/status list in Basic chat mode
+  // 8. Staff lookup by ID/ref/name or pending/status list in Basic chat mode
   if (role !== 'customer') {
     if (/(pending|submitted|approved|rejected|list.*application|list out|which application|show.*application)/i.test(lower)) {
       const statusFilter = /pending|submitted/.test(lower)
@@ -1052,13 +1742,14 @@ export async function executeDeterministicConversation({ message, role = 'custom
       const listRes = executeTool('list_applications', { status: statusFilter }, { role, session, dbData });
       const items = listRes.applications || [];
       const lines = items.length > 0
-        ? items.map((a) => `• **${a.name}** (#${a.id.slice(-8).toUpperCase()})\n  - **Equipment:** ${a.equipment}\n  - **Monthly EMI:** ${Number(a.monthly_emi_kz || 0).toLocaleString()} Kz\n  - **Status:** ${a.status}\n  - **Submitted:** ${a.submitted_at ? String(a.submitted_at).slice(0, 10) : 'N/A'}`).join('\n\n')
+        ? items.map((a) => `• **${a.name}** (${a.application_id || '#' + a.id.slice(-8).toUpperCase()})\n  - **Equipment:** ${a.equipment}\n  - **Monthly EMI:** ${Number(a.monthly_emi_kz || 0).toLocaleString()} Kz\n  - **Status:** ${a.status}\n  - **Submitted:** ${a.submitted_at ? String(a.submitted_at).slice(0, 10) : 'N/A'}`).join('\n\n')
         : 'No applications found for that filter.';
       return {
         text: `There are **${listRes.total} ${statusFilter === 'all' ? '' : statusFilter + ' '}application(s)**:\n\n${lines}`,
         tools_called: ['list_applications'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['What is the average score?', 'What happened in the last 7 days?', 'Rejection summary'],
       };
     }
 
@@ -1066,20 +1757,34 @@ export async function executeDeterministicConversation({ message, role = 'custom
     if (matchedApp) {
       const p = formatStaffApplicationProfile(matchedApp);
       return {
-        text: `**Applicant Profile: ${p.name}** (#${p.id})\n\n• **Age / DOB:** ${p.age ? `${p.age} years (${p.date_of_birth})` : 'N/A'}\n• **Phone / Segment:** ${p.msisdn || 'N/A'} • Segment ${p.segment_code}\n• **Equipment & Amount:** ${p.equipment} — **${Number(p.price_kz).toLocaleString()} Kz**\n• **Monthly EMI:** ${Number(p.monthly_emi_kz).toLocaleString()} Kz/mo (${p.term_months} months)\n• **Credit Score:** ${p.score ? `${p.score} (${p.band || 'Scored'})` : 'N/A'}${p.limit_kz ? ` • Limit: ${Number(p.limit_kz).toLocaleString()} Kz` : ''}\n• **Status:** ${p.status}\n• **Submitted:** ${p.submitted_at || 'N/A'}`,
+        text: `**Applicant Profile: ${p.name}** (${p.application_id})\n\n• **Age / DOB:** ${p.age ? `${p.age} years (${p.date_of_birth})` : 'N/A'}\n• **Phone / Segment:** ${p.msisdn || 'N/A'} • Segment ${p.segment_code}\n• **Equipment & Amount:** ${p.equipment} — **${Number(p.price_kz).toLocaleString()} Kz**\n• **Monthly EMI:** ${Number(p.monthly_emi_kz).toLocaleString()} Kz/mo (${p.term_months} months)\n• **Credit Score:** ${p.score ? `${p.score} (${p.band || 'Scored'})` : 'N/A'}${p.limit_kz ? ` • Limit: ${Number(p.limit_kz).toLocaleString()} Kz` : ''}\n• **Status:** ${p.status}\n• **Submitted:** ${p.submitted_at || 'N/A'}`,
         tools_called: ['get_application_details'],
         mode: 'basic',
         mode_label: 'Basic chat mode',
+        suggestions: ['Show score breakdown', 'Similar customers', 'Why this credit limit?', 'Open audit log'],
       };
     }
   }
 
-  // 8. Strict fallback: Never invent numbers or statuses!
+  // 9. Fallback Knowledge Search
+  const kResult = executeTool('search_portal_knowledge', { query }, { role, session, dbData });
+  if (kResult.matches && !kResult.matches[0].includes('No specific documentation')) {
+    return {
+      text: kResult.matches[0],
+      tools_called: ['search_portal_knowledge'],
+      mode: 'basic',
+      mode_label: 'Basic chat mode',
+      suggestions: role === 'customer' ? ['Where is my status?', 'How is my score calculated?'] : ['What is the average score?', 'List pending applications'],
+    };
+  }
+
+  // 10. Strict fallback: Never invent numbers or statuses!
   return {
     text: "I don't know the answer to this question based on current portal data and configuration. You can review the full underwriting details under the 'Credit score evaluation' menu or in the 'Segments' tab.",
     tools_called: [],
     mode: 'basic',
     mode_label: 'Basic chat mode',
+    suggestions: role === 'customer' ? ['Where is my status?', 'How is my score calculated?'] : ['What is the average score?', 'What happened in the last 7 days?'],
   };
 }
 
@@ -1091,7 +1796,7 @@ export const CHAT_TOOL_SPECS = [
     type: 'function',
     function: {
       name: 'lookup_application',
-      description: 'Look up an application by full/partial ID or mobile number.',
+      description: 'Look up an application by 5-digit Application ID, full/partial ID, or mobile number.',
       parameters: {
         type: 'object',
         properties: { identifier: { type: 'string' } },
@@ -1155,6 +1860,83 @@ export const CHAT_TOOL_SPECS = [
         type: 'object',
         properties: { query: { type: 'string' } },
         required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_portfolio',
+      description: 'Staff: query portfolio metrics (count, average_score, breakdown_by_segment, breakdown_by_status, list).',
+      parameters: {
+        type: 'object',
+        properties: {
+          filters: {
+            type: 'object',
+            properties: {
+              status: { type: 'string' },
+              segment: { type: 'string' },
+              min_score: { type: 'number' },
+              max_score: { type: 'number' },
+              days: { type: 'number' },
+            },
+          },
+          metric: { type: 'string', enum: ['count', 'average_score', 'breakdown_by_segment', 'breakdown_by_status', 'list'] },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_recent_activity',
+      description: 'Staff: get portfolio activity (submitted, approved, rejected, cancelled, pending) for last N days.',
+      parameters: { type: 'object', properties: { days: { type: 'number' } } },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_rejection_summary',
+      description: 'Staff: get count of rejected applications and top rejection reasons with counts.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_pending',
+      description: 'Staff: list pending applications with Application ID, name, waiting time, and queue position.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_segment_info',
+      description: 'Get customer segment definitions (and counts for staff).',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'list_emi_plans',
+      description: 'List available EMI tenures, interest rates, and fees from loan config.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'explain_amount',
+      description: 'Explain calculation of credit limit, equipment price, or monthly EMI step-by-step from code rules.',
+      parameters: {
+        type: 'object',
+        properties: {
+          application_id: { type: 'string' },
+          which: { type: 'string', enum: ['limit', 'price', 'emi', 'all'] },
+        },
       },
     },
   },
@@ -1399,16 +2181,20 @@ export async function handleStreamingChat({
     'mistral-small-latest';
 
   const systemPrompt = `You are the friendly, concise Unitel Credit Portal assistant in Angola.
-6-stage workflow: 1) Applicant & ID check -> 2) Segment -> 3) Parameters -> 4) Assets & Income -> 5) Score & Limit -> 6) Equipment & Submit.
+Workflow: 1) Applicant & ID check -> 2) Segment -> 3) Parameters -> 4) Assets & Income -> 5) Score & Limit -> 6) Equipment & Submit.
 Rules:
-- Keep replies short, use clean spaced blocks with **bold left labels** (no markdown tables, no single *asterisks*). For application lists, put a blank line between each applicant ('1. **Name** (ID)\n   - **Device:** ... | **Score:** ... | **Date:** ...').
-- For scoring, limits, segments, or KYC docs, call search_portal_knowledge. Never guess numbers or statuses.
-- When user wants to open/apply/go to a page, call navigate_to.
-- Customer status flow: ask for Application ID or mobile number -> call lookup_application (if needs_confirmation, ask "Did you mean <id>?") -> ask for last 4 digits -> call verify_customer (must be 4 digits; never pass partial negative numbers like -331). Remember verified app (${session.verifiedApplicationId || 'None'}) for follow-ups (EMI, date, cancel via request_cancel).
-- ${role === 'customer' ? 'Customers can ONLY view their own verified application.' : `Authorized staff (${role}): you may view any applicant via get_application_details, list_applications, get_stats, or get_rejection_reasons. Never approve/reject.`}
+- Keep replies short, use clean spaced blocks with **bold left labels** (no markdown tables, no single *asterisks*). For lists, put a blank line between each item.
+- Application ID is a unique 5-digit number (10001-99999). Always label it "Application ID: 10234". Never use "Reference ID" or long internal IDs in your replies.
+- For portfolio analytics (average score, activity, pending queue, rejection summary), call query_portfolio, get_recent_activity, list_pending, or get_rejection_summary. Quote the exact numbers from the tool results; never calculate yourself.
+- For EMI financing plans, call list_emi_plans. For segments, call get_segment_info.
+- For amount calculations (credit limit, device price, EMI), call explain_amount. If the user asks "which amount?", ask which amount they would like to review (Credit limit, Equipment price, Monthly EMI).
+- If an application has already been cancelled, state: "You already cancelled this application."
+- Role access: Customer can ONLY see their verified application and general information (EMI plans, segment rules). Customer is strictly BLOCKED from portfolio analytics and counts.
+- AT THE VERY END OF EVERY ASSISTANT REPLY, ALWAYS append 2-4 follow-up suggestions tag: <suggestions>["Option 1", "Option 2", ...]</suggestions> (each under 8 words, contextual to the role).
 Current role: ${role}. Pending confirmation: ${session.pendingLookupConfirmation || 'None'}. Pending 4-digit check: ${session.pendingVerification?.applicationId || 'None'}. Verified app: ${session.verifiedApplicationId || 'None'}.`;
 
   const toolsCalled = [];
+  let deliveredSuggestions = [];
 
   // Helper: call OpenAI-compatible provider with 429 Retry-After (up to 3s), max 3 tool calls, last 6 messages
   async function executeProviderToolLoop({ baseUrl, apiKey, model, providerName }) {
@@ -1421,7 +2207,6 @@ Current role: ${role}. Pending confirmation: ${session.pendingLookupConfirmation
     let iterations = 0;
     let finalContent = '';
     let actionProposal = null;
-    let streamedDirectly = false;
 
     while (iterations < 3) {
       iterations++;
@@ -1499,8 +2284,6 @@ Current role: ${role}. Pending confirmation: ${session.pendingLookupConfirmation
 
               if (delta.content) {
                 turnText += delta.content;
-                onChunk(delta.content);
-                streamedDirectly = true;
               }
 
               if (Array.isArray(delta.tool_calls)) {
@@ -1549,7 +2332,11 @@ Current role: ${role}. Pending confirmation: ${session.pendingLookupConfirmation
           }
           continue;
         } else {
-          finalContent = turnText;
+          const parsedSug = parseAndValidateSuggestions(turnText, role, {
+            isVerified: Boolean(session.verifiedApplicationId),
+          });
+          finalContent = parsedSug.cleanedText;
+          deliveredSuggestions = parsedSug.suggestions;
           break;
         }
       }
@@ -1583,12 +2370,17 @@ Current role: ${role}. Pending confirmation: ${session.pendingLookupConfirmation
           });
         }
       } else {
-        finalContent = msg?.content || '';
+        const rawContent = msg?.content || '';
+        const parsedSug = parseAndValidateSuggestions(rawContent, role, {
+          isVerified: Boolean(session.verifiedApplicationId),
+        });
+        finalContent = parsedSug.cleanedText;
+        deliveredSuggestions = parsedSug.suggestions;
         break;
       }
     }
 
-    return { content: finalContent, actionProposal, streamedDirectly };
+    return { content: finalContent, actionProposal, suggestions: deliveredSuggestions };
   }
 
   let answeredBy = null;
@@ -1680,6 +2472,10 @@ Current role: ${role}. Pending confirmation: ${session.pendingLookupConfirmation
     answeredLabel = 'AI Busy';
     setLastProviderUsed('none');
     finalContent = 'The AI is busy, please try again in a few seconds.';
+    deliveredSuggestions =
+      role === 'customer'
+        ? ['Where is my status?', 'How is my score calculated?']
+        : ['What is the average score?', 'List pending applications'];
   }
 
   // Log in immutable audit log
@@ -1718,6 +2514,7 @@ Current role: ${role}. Pending confirmation: ${session.pendingLookupConfirmation
     tools_called: toolsCalled,
     error_text: lastErrorText || null,
     retryable: answeredBy === 'error',
+    suggestions: deliveredSuggestions,
   });
 }
 

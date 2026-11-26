@@ -192,7 +192,7 @@ export function generateLoanEmailHtml(options: {
   const isRejected = options.kind === 'rejection_notice';
   const isSubmission = options.kind === 'submission_notice';
 
-  const refCode = `CR-${options.applicationId.slice(-6).toUpperCase()}`;
+  const refCode = options.applicationId ? `Application ID: ${options.applicationId}` : 'Application ID: 10001';
 
   // Subject line and title per Section 10
   const title = isSubmission
@@ -457,6 +457,7 @@ export async function syncApplicationToSupabase(app: LoanApplication): Promise<b
 
     const { error } = await supabase.from('loan_applications').upsert({
       id: app.id,
+      application_no: app.applicationNo || app.application_no || null,
       evaluation_id: app.evaluation_id,
       equipment_id: app.equipment_id,
       price_kz: app.price_kz,

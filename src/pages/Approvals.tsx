@@ -205,7 +205,7 @@ export const Approvals: React.FC = () => {
     );
 
     refreshData();
-    setActionSuccess(`Application ${selectedApp.id.slice(-6).toUpperCase()} marked as ${decisionType.toUpperCase()}! Decision email delivered.`);
+    setActionSuccess(`Application ${selectedApp.applicationNo ? `ID: ${selectedApp.applicationNo}` : selectedApp.id} marked as ${decisionType.toUpperCase()}! Decision email delivered.`);
     setTimeout(() => {
       setDecisionModalOpen(false);
       setActionSuccess('');
@@ -294,7 +294,7 @@ export const Approvals: React.FC = () => {
               <table className="w-full text-left text-xs min-w-[720px]">
                 <thead className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                   <tr>
-                    <th className="py-3 px-4 w-24">Ref</th>
+                    <th className="py-3 px-4 w-36">Application ID</th>
                     <th className="py-3 px-4 w-52">Subscriber</th>
                     <th className="py-3 px-4 w-28">Segment</th>
                     <th className="py-3 px-4">Equipment</th>
@@ -318,20 +318,20 @@ export const Approvals: React.FC = () => {
                         onClick={() => handleOpenReview(app)}
                         className="hover:bg-peach/30 transition-colors cursor-pointer group"
                       >
-                        <td className="py-3 px-4 font-mono font-bold text-slate-600 group/id">
+                        <td className="py-3 px-4 font-mono font-bold text-slate-700 group/id">
                           <div className="inline-flex items-center gap-1.5">
-                            <span>{app.id.slice(-6).toUpperCase()}</span>
+                            <span>Application ID: {app.applicationNo || app.id}</span>
                             <button
                               type="button"
-                              onClick={(e) => handleCopyRef(e, app.id.slice(-6).toUpperCase())}
-                              title="Copy Application Ref"
+                              onClick={(e) => handleCopyRef(e, String(app.applicationNo || app.id))}
+                              title="Copy Application ID"
                               className={`p-1 rounded-md transition-opacity ${
-                                copiedRefId === app.id.slice(-6).toUpperCase()
+                                copiedRefId === String(app.applicationNo || app.id)
                                   ? 'opacity-100 text-emerald-600 bg-emerald-50'
                                   : 'opacity-0 group-hover/id:opacity-100 text-slate-400 hover:text-orange-600 hover:bg-orange-50'
                               }`}
                             >
-                              {copiedRefId === app.id.slice(-6).toUpperCase() ? (
+                              {copiedRefId === String(app.applicationNo || app.id) ? (
                                 <Check className="w-3.5 h-3.5" />
                               ) : (
                                 <Copy className="w-3.5 h-3.5" />
@@ -441,8 +441,8 @@ export const Approvals: React.FC = () => {
             </button>
 
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-slate-500">
-                App ID: {selectedApp.id}
+              <span className="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                Application ID: {selectedApp.applicationNo || selectedApp.id}
               </span>
               <StatusChip status={selectedApp.status} />
             </div>

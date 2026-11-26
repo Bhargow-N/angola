@@ -2,6 +2,7 @@
   "applications": [
     {
       "id": "app-seed-001",
+      "applicationNo": 10001,
       "evaluation_id": "eval-seed-001",
       "equipment_id": "e-1",
       "price_kz": 18000,
@@ -11,7 +12,7 @@
       "emi_share_pct": 3,
       "status": "approved",
       "submitted_by": "00000000-0000-0000-0000-000000000001",
-      "submitted_at": "2026-11-22T17:00:36.530Z",
+      "submitted_at": "2026-11-23T08:28:06.424Z",
       "evaluation": {
         "id": "eval-seed-001",
         "customer_id": "c-joao-s1",
@@ -23,7 +24,7 @@
         "income_band_code": 2,
         "income_source": "estimated",
         "status": "scored",
-        "created_at": "2026-11-22T17:00:36.524Z",
+        "created_at": "2026-11-23T08:28:06.419Z",
         "customer": {
           "id": "c-joao-s1",
           "full_name": "João Manuel Baptista",
@@ -81,7 +82,7 @@
           "limit_kz": 50000,
           "limit_cap_applied": "Income Cap: Low (Min Wage) (Max STARTER)",
           "score_version": "v2.0-default-points-engine-v2",
-          "computed_at": "2026-11-25T17:00:36.524Z"
+          "computed_at": "2026-11-26T08:28:06.419Z"
         }
       },
       "equipment": {
@@ -94,6 +95,7 @@
     },
     {
       "id": "app-seed-002",
+      "applicationNo": 10002,
       "evaluation_id": "eval-seed-002",
       "equipment_id": "e-5",
       "price_kz": 85000,
@@ -103,7 +105,7 @@
       "emi_share_pct": 8.1,
       "status": "submitted",
       "submitted_by": "00000000-0000-0000-0000-000000000001",
-      "submitted_at": "2026-11-24T05:00:36.531Z",
+      "submitted_at": "2026-11-24T20:28:06.424Z",
       "evaluation": {
         "id": "eval-seed-002",
         "customer_id": "c-esperanca-s3",
@@ -115,7 +117,7 @@
         "income_band_code": 3,
         "income_source": "stated",
         "status": "scored",
-        "created_at": "2026-11-23T17:00:36.527Z",
+        "created_at": "2026-11-24T08:28:06.420Z",
         "customer": {
           "id": "c-esperanca-s3",
           "full_name": "Esperança Teresa Domingos",
@@ -173,7 +175,7 @@
           "limit_kz": 150000,
           "limit_cap_applied": "Income Cap: Lower-middle (Max STANDARD)",
           "score_version": "v2.0-default-points-engine-v2",
-          "computed_at": "2026-11-25T17:00:36.526Z"
+          "computed_at": "2026-11-26T08:28:06.420Z"
         }
       },
       "equipment": {
@@ -186,6 +188,7 @@
     },
     {
       "id": "app-seed-003",
+      "applicationNo": 10003,
       "evaluation_id": "eval-seed-003",
       "equipment_id": "e-8",
       "price_kz": 210000,
@@ -195,7 +198,7 @@
       "emi_share_pct": 2.3,
       "status": "approved",
       "submitted_by": "00000000-0000-0000-0000-000000000001",
-      "submitted_at": "2026-11-24T21:48:36.531Z",
+      "submitted_at": "2026-11-25T13:16:06.424Z",
       "evaluation": {
         "id": "eval-seed-003",
         "customer_id": "c-paulo-s7",
@@ -207,7 +210,7 @@
         "income_band_code": 5,
         "income_source": "stated",
         "status": "scored",
-        "created_at": "2026-11-24T17:00:36.527Z",
+        "created_at": "2026-11-25T08:28:06.421Z",
         "customer": {
           "id": "c-paulo-s7",
           "full_name": "Dr. Paulo Henrique Afonso",
@@ -265,7 +268,7 @@
           "limit_kz": 1000000,
           "limit_cap_applied": "Score Band: Very good (HIGHEST)",
           "score_version": "v2.0-default-points-engine-v2",
-          "computed_at": "2026-11-25T17:00:36.527Z"
+          "computed_at": "2026-11-26T08:28:06.421Z"
         }
       },
       "equipment": {
@@ -278,6 +281,7 @@
     },
     {
       "id": "app-seed-004",
+      "applicationNo": 10004,
       "evaluation_id": "eval-seed-004",
       "equipment_id": "e-6",
       "price_kz": 120000,
@@ -287,7 +291,7 @@
       "emi_share_pct": 35,
       "status": "rejected",
       "submitted_by": "00000000-0000-0000-0000-000000000001",
-      "submitted_at": "2026-11-21T17:00:36.531Z",
+      "submitted_at": "2026-11-22T08:28:06.424Z",
       "evaluation": {
         "id": "eval-seed-004",
         "customer_id": "c-mateus-low",
@@ -299,7 +303,7 @@
         "income_band_code": 1,
         "income_source": "estimated",
         "status": "scored",
-        "created_at": "2026-11-21T17:00:36.528Z",
+        "created_at": "2026-11-22T08:28:06.422Z",
         "customer": {
           "id": "c-mateus-low",
           "full_name": "Mateus Kiala",
@@ -366,7 +370,7 @@
           "limit_kz": 50000,
           "limit_cap_applied": "Overlay Cap: Starter Level (Max 50,000 Kz)",
           "score_version": "v2.0-default-points-engine-v2",
-          "computed_at": "2026-11-25T17:00:36.528Z"
+          "computed_at": "2026-11-26T08:28:06.421Z"
         }
       },
       "equipment": {
@@ -379,6 +383,7 @@
     },
     {
       "id": "app-seed-005",
+      "applicationNo": 10005,
       "evaluation_id": "eval-seed-005",
       "equipment_id": "e-7",
       "price_kz": 165000,
@@ -388,7 +393,7 @@
       "emi_share_pct": 36.6,
       "status": "rejected",
       "submitted_by": "00000000-0000-0000-0000-000000000001",
-      "submitted_at": "2026-11-20T17:00:36.531Z",
+      "submitted_at": "2026-11-21T08:28:06.424Z",
       "evaluation": {
         "id": "eval-seed-005",
         "customer_id": "c-rosa-s8",
@@ -400,7 +405,7 @@
         "income_band_code": 2,
         "income_source": "stated",
         "status": "scored",
-        "created_at": "2026-11-20T17:00:36.529Z",
+        "created_at": "2026-11-21T08:28:06.422Z",
         "customer": {
           "id": "c-rosa-s8",
           "full_name": "Rosa Maria Bernardo",
@@ -458,7 +463,7 @@
           "limit_kz": 50000,
           "limit_cap_applied": "Income Cap: Low (Min Wage) (Max STARTER)",
           "score_version": "v2.0-default-points-engine-v2",
-          "computed_at": "2026-11-25T17:00:36.529Z"
+          "computed_at": "2026-11-26T08:28:06.422Z"
         }
       },
       "equipment": {
@@ -471,6 +476,7 @@
     },
     {
       "id": "app-seed-006",
+      "applicationNo": 10006,
       "evaluation_id": "eval-seed-006",
       "equipment_id": "e-3",
       "price_kz": 65000,
@@ -480,7 +486,7 @@
       "emi_share_pct": 6.2,
       "status": "submitted",
       "submitted_by": "00000000-0000-0000-0000-000000000001",
-      "submitted_at": "2026-11-24T12:12:36.531Z",
+      "submitted_at": "2026-11-25T03:40:06.424Z",
       "evaluation": {
         "id": "eval-seed-006",
         "customer_id": "c-alberto-s5",
@@ -492,7 +498,7 @@
         "income_band_code": 3,
         "income_source": "stated",
         "status": "scored",
-        "created_at": "2026-11-24T12:12:36.529Z",
+        "created_at": "2026-11-25T03:40:06.423Z",
         "customer": {
           "id": "c-alberto-s5",
           "full_name": "Alberto Sebastião",
@@ -550,7 +556,7 @@
           "limit_kz": 150000,
           "limit_cap_applied": "Income Cap: Lower-middle (Max STANDARD)",
           "score_version": "v2.0-default-points-engine-v2",
-          "computed_at": "2026-11-25T17:00:36.529Z"
+          "computed_at": "2026-11-26T08:28:06.423Z"
         }
       },
       "equipment": {
@@ -563,6 +569,7 @@
     },
     {
       "id": "app-seed-007",
+      "applicationNo": 10007,
       "evaluation_id": "eval-seed-007",
       "equipment_id": "e-4",
       "price_kz": 35000,
@@ -572,7 +579,7 @@
       "emi_share_pct": 3.3,
       "status": "saved",
       "submitted_by": "00000000-0000-0000-0000-000000000001",
-      "submitted_at": "2026-11-25T05:00:36.531Z",
+      "submitted_at": "2026-11-25T20:28:06.424Z",
       "evaluation": {
         "id": "eval-seed-007",
         "customer_id": "c-teresa-s6",
@@ -584,7 +591,7 @@
         "income_band_code": 3,
         "income_source": "estimated",
         "status": "scored",
-        "created_at": "2026-11-25T05:00:36.530Z",
+        "created_at": "2026-11-25T20:28:06.423Z",
         "customer": {
           "id": "c-teresa-s6",
           "full_name": "Teresa de Jesus Neto",
@@ -642,7 +649,7 @@
           "limit_kz": 150000,
           "limit_cap_applied": "Score Band: Acceptable (STANDARD)",
           "score_version": "v2.0-default-points-engine-v2",
-          "computed_at": "2026-11-25T17:00:36.530Z"
+          "computed_at": "2026-11-26T08:28:06.423Z"
         }
       },
       "equipment": {
@@ -655,6 +662,7 @@
     },
     {
       "id": "app-seed-008",
+      "applicationNo": 10008,
       "evaluation_id": "eval-seed-008",
       "equipment_id": "e-2",
       "price_kz": 45000,
@@ -664,8 +672,8 @@
       "emi_share_pct": 7.5,
       "status": "purchased",
       "submitted_by": "00000000-0000-0000-0000-000000000001",
-      "submitted_at": "2026-11-19T17:00:36.531Z",
-      "purchased_at": "2026-11-20T05:00:36.531Z",
+      "submitted_at": "2026-11-20T08:28:06.424Z",
+      "purchased_at": "2026-11-20T20:28:06.424Z",
       "evaluation": {
         "id": "eval-seed-008",
         "customer_id": "c-manuel-s2",
@@ -677,7 +685,7 @@
         "income_band_code": 2,
         "income_source": "estimated",
         "status": "scored",
-        "created_at": "2026-11-19T17:00:36.530Z",
+        "created_at": "2026-11-20T08:28:06.424Z",
         "customer": {
           "id": "c-manuel-s2",
           "full_name": "Manuel António da Silva",
@@ -735,7 +743,7 @@
           "limit_kz": 50000,
           "limit_cap_applied": "Income Cap: Low (Min Wage) (Max STARTER)",
           "score_version": "v2.0-default-points-engine-v2",
-          "computed_at": "2026-11-25T17:00:36.530Z"
+          "computed_at": "2026-11-26T08:28:06.424Z"
         }
       },
       "equipment": {
@@ -754,7 +762,7 @@
       "approver_id": "00000000-0000-0000-0000-000000000002",
       "decision": "approved",
       "reason": "Affordable starter loan within 50,000 Kz cap. Long 36m tenure and consistent topups.",
-      "decided_at": "2026-11-22T21:48:36.531Z"
+      "decided_at": "2026-11-23T13:16:06.424Z"
     },
     {
       "id": "appr-seed-003",
@@ -762,7 +770,7 @@
       "approver_id": "00000000-0000-0000-0000-000000000002",
       "decision": "approved",
       "reason": "Formal government payroll direct deposit verified in Banco BAI. High credit score (790).",
-      "decided_at": "2026-11-25T05:00:36.531Z"
+      "decided_at": "2026-11-25T20:28:06.424Z"
     },
     {
       "id": "appr-seed-004",
@@ -770,7 +778,7 @@
       "approver_id": "00000000-0000-0000-0000-000000000002",
       "decision": "rejected",
       "reason": "Underwriting hold: SIM card replaced 12 days ago. Minimum 30-day seasoning required.",
-      "decided_at": "2026-11-21T19:24:36.531Z"
+      "decided_at": "2026-11-22T10:52:06.424Z"
     },
     {
       "id": "appr-seed-005",
@@ -778,7 +786,7 @@
       "approver_id": "00000000-0000-0000-0000-000000000002",
       "decision": "rejected",
       "reason": "Monthly EMI (27,500 Kz) exceeds regulatory 30% debt-service cap for income band 2.",
-      "decided_at": "2026-11-20T21:48:36.531Z"
+      "decided_at": "2026-11-21T13:16:06.424Z"
     },
     {
       "id": "appr-seed-008",
@@ -786,7 +794,7 @@
       "approver_id": "00000000-0000-0000-0000-000000000002",
       "decision": "approved",
       "reason": "Verified USSD wallet activity and 46-month telecom tenure. Approved for collection.",
-      "decided_at": "2026-11-19T21:48:36.531Z"
+      "decided_at": "2026-11-20T13:16:06.424Z"
     }
   ],
   "evaluations": [
@@ -801,7 +809,7 @@
       "income_band_code": 2,
       "income_source": "estimated",
       "status": "scored",
-      "created_at": "2026-11-22T17:00:36.531Z",
+      "created_at": "2026-11-23T08:28:06.424Z",
       "customer": {
         "id": "c-joao-s1",
         "full_name": "João Manuel Baptista",
@@ -859,7 +867,7 @@
         "limit_kz": 50000,
         "limit_cap_applied": "Income Cap: Low (Min Wage) (Max STARTER)",
         "score_version": "v2.0-default-points-engine-v2",
-        "computed_at": "2026-11-25T17:00:36.531Z"
+        "computed_at": "2026-11-26T08:28:06.424Z"
       }
     },
     {
@@ -873,7 +881,7 @@
       "income_band_code": 3,
       "income_source": "stated",
       "status": "scored",
-      "created_at": "2026-11-23T17:00:36.532Z",
+      "created_at": "2026-11-24T08:28:06.425Z",
       "customer": {
         "id": "c-esperanca-s3",
         "full_name": "Esperança Teresa Domingos",
@@ -931,7 +939,7 @@
         "limit_kz": 150000,
         "limit_cap_applied": "Income Cap: Lower-middle (Max STANDARD)",
         "score_version": "v2.0-default-points-engine-v2",
-        "computed_at": "2026-11-25T17:00:36.532Z"
+        "computed_at": "2026-11-26T08:28:06.425Z"
       }
     },
     {
@@ -945,7 +953,7 @@
       "income_band_code": 5,
       "income_source": "stated",
       "status": "scored",
-      "created_at": "2026-11-24T17:00:36.532Z",
+      "created_at": "2026-11-25T08:28:06.425Z",
       "customer": {
         "id": "c-paulo-s7",
         "full_name": "Dr. Paulo Henrique Afonso",
@@ -1003,7 +1011,7 @@
         "limit_kz": 1000000,
         "limit_cap_applied": "Score Band: Very good (HIGHEST)",
         "score_version": "v2.0-default-points-engine-v2",
-        "computed_at": "2026-11-25T17:00:36.532Z"
+        "computed_at": "2026-11-26T08:28:06.425Z"
       }
     },
     {
@@ -1017,7 +1025,7 @@
       "income_band_code": 1,
       "income_source": "estimated",
       "status": "scored",
-      "created_at": "2026-11-21T17:00:36.532Z",
+      "created_at": "2026-11-22T08:28:06.425Z",
       "customer": {
         "id": "c-mateus-low",
         "full_name": "Mateus Kiala",
@@ -1084,7 +1092,7 @@
         "limit_kz": 50000,
         "limit_cap_applied": "Overlay Cap: Starter Level (Max 50,000 Kz)",
         "score_version": "v2.0-default-points-engine-v2",
-        "computed_at": "2026-11-25T17:00:36.532Z"
+        "computed_at": "2026-11-26T08:28:06.425Z"
       }
     },
     {
@@ -1098,7 +1106,7 @@
       "income_band_code": 2,
       "income_source": "stated",
       "status": "scored",
-      "created_at": "2026-11-20T17:00:36.533Z",
+      "created_at": "2026-11-21T08:28:06.426Z",
       "customer": {
         "id": "c-rosa-s8",
         "full_name": "Rosa Maria Bernardo",
@@ -1156,7 +1164,7 @@
         "limit_kz": 50000,
         "limit_cap_applied": "Income Cap: Low (Min Wage) (Max STARTER)",
         "score_version": "v2.0-default-points-engine-v2",
-        "computed_at": "2026-11-25T17:00:36.533Z"
+        "computed_at": "2026-11-26T08:28:06.426Z"
       }
     },
     {
@@ -1170,7 +1178,7 @@
       "income_band_code": 3,
       "income_source": "stated",
       "status": "scored",
-      "created_at": "2026-11-24T12:12:36.534Z",
+      "created_at": "2026-11-25T03:40:06.426Z",
       "customer": {
         "id": "c-alberto-s5",
         "full_name": "Alberto Sebastião",
@@ -1228,7 +1236,7 @@
         "limit_kz": 150000,
         "limit_cap_applied": "Income Cap: Lower-middle (Max STANDARD)",
         "score_version": "v2.0-default-points-engine-v2",
-        "computed_at": "2026-11-25T17:00:36.534Z"
+        "computed_at": "2026-11-26T08:28:06.426Z"
       }
     },
     {
@@ -1242,7 +1250,7 @@
       "income_band_code": 3,
       "income_source": "estimated",
       "status": "scored",
-      "created_at": "2026-11-25T05:00:36.534Z",
+      "created_at": "2026-11-25T20:28:06.426Z",
       "customer": {
         "id": "c-teresa-s6",
         "full_name": "Teresa de Jesus Neto",
@@ -1300,7 +1308,7 @@
         "limit_kz": 150000,
         "limit_cap_applied": "Score Band: Acceptable (STANDARD)",
         "score_version": "v2.0-default-points-engine-v2",
-        "computed_at": "2026-11-25T17:00:36.534Z"
+        "computed_at": "2026-11-26T08:28:06.426Z"
       }
     },
     {
@@ -1314,7 +1322,7 @@
       "income_band_code": 2,
       "income_source": "estimated",
       "status": "scored",
-      "created_at": "2026-11-19T17:00:36.534Z",
+      "created_at": "2026-11-20T08:28:06.426Z",
       "customer": {
         "id": "c-manuel-s2",
         "full_name": "Manuel António da Silva",
@@ -1372,7 +1380,7 @@
         "limit_kz": 50000,
         "limit_cap_applied": "Income Cap: Low (Min Wage) (Max STARTER)",
         "score_version": "v2.0-default-points-engine-v2",
-        "computed_at": "2026-11-25T17:00:36.534Z"
+        "computed_at": "2026-11-26T08:28:06.426Z"
       }
     }
   ],
@@ -1385,7 +1393,7 @@
       "subject": "New Loan Application Submitted (CR-001) - João Manuel Baptista",
       "body": "Application for Unitel Feature Phone (18,000 Kz) submitted by Tomas Silva (Applicant). Proxy score: 620 (Acceptable).",
       "status": "logged",
-      "created_at": "2026-11-22T17:00:36.530Z"
+      "created_at": "2026-11-23T08:28:06.424Z"
     },
     {
       "id": "notif-002",
@@ -1395,7 +1403,7 @@
       "subject": "Loan Application Approved (CR-001) - João Manuel Baptista",
       "body": "Dra. Maria Mendes approved application CR-001 for 18,000 Kz over 6 months (EMI: 3,000 Kz/mo).",
       "status": "logged",
-      "created_at": "2026-11-22T21:48:36.531Z"
+      "created_at": "2026-11-23T13:16:06.424Z"
     },
     {
       "id": "notif-003",
@@ -1405,7 +1413,7 @@
       "subject": "New Loan Application Awaiting Approval (CR-002) - Esperança Teresa Domingos",
       "body": "Application for Samsung Galaxy A05 (85,000 Kz) submitted by Tomas Silva. Proxy score: 685 (Acceptable).",
       "status": "logged",
-      "created_at": "2026-11-24T05:00:36.531Z"
+      "created_at": "2026-11-24T20:28:06.424Z"
     },
     {
       "id": "notif-004",
@@ -1415,35 +1423,13 @@
       "subject": "Loan Application Approved (CR-003) - Dr. Paulo Henrique Afonso",
       "body": "Dra. Maria Mendes approved application CR-003 for Lenovo Tab M10 (210,000 Kz).",
       "status": "logged",
-      "created_at": "2026-11-25T05:00:36.531Z"
+      "created_at": "2026-11-25T20:28:06.424Z"
     }
   ],
   "auditLogs": [
     {
-      "id": 1795626036592,
-      "at": "2026-11-25T17:00:36.592Z",
-      "actor_name": "Eng. Carlos Neto (Admin)",
-      "action": "reset_scoring_config",
-      "entity": "scoring_config",
-      "entity_id": "default",
-      "details": {
-        "message": "Reset segments and weights to baseline seed"
-      }
-    },
-    {
-      "id": 1795626036631,
-      "at": "2026-11-25T17:00:36.631Z",
-      "actor_name": "Unitel Tester",
-      "action": "update_equipment_catalog",
-      "entity": "equipment",
-      "entity_id": "catalog",
-      "details": {
-        "items_count": 9
-      }
-    },
-    {
       "id": 1,
-      "at": "2026-11-22T14:36:36.531Z",
+      "at": "2026-11-23T06:04:06.424Z",
       "actor_name": "Tomas Silva (Applicant)",
       "action": "create_evaluation",
       "entity": "evaluations",
@@ -1457,7 +1443,7 @@
     },
     {
       "id": 2,
-      "at": "2026-11-22T17:00:36.530Z",
+      "at": "2026-11-23T08:28:06.424Z",
       "actor_name": "Tomas Silva (Applicant)",
       "action": "submit_loan_application",
       "entity": "loan_applications",
@@ -1471,7 +1457,7 @@
     },
     {
       "id": 3,
-      "at": "2026-11-22T21:48:36.531Z",
+      "at": "2026-11-23T13:16:06.424Z",
       "actor_name": "Dra. Maria Mendes (Approver)",
       "action": "decision_approved",
       "entity": "approvals",
@@ -1483,7 +1469,7 @@
     },
     {
       "id": 4,
-      "at": "2026-11-23T17:00:36.531Z",
+      "at": "2026-11-24T08:28:06.424Z",
       "actor_name": "Tomas Silva (Applicant)",
       "action": "create_evaluation",
       "entity": "evaluations",
@@ -1497,7 +1483,7 @@
     },
     {
       "id": 5,
-      "at": "2026-11-24T05:00:36.531Z",
+      "at": "2026-11-24T20:28:06.424Z",
       "actor_name": "Tomas Silva (Applicant)",
       "action": "submit_loan_application",
       "entity": "loan_applications",
@@ -1511,7 +1497,7 @@
     },
     {
       "id": 6,
-      "at": "2026-11-24T17:00:36.531Z",
+      "at": "2026-11-25T08:28:06.424Z",
       "actor_name": "Tomas Silva (Applicant)",
       "action": "create_evaluation",
       "entity": "evaluations",
@@ -1525,7 +1511,7 @@
     },
     {
       "id": 7,
-      "at": "2026-11-24T21:48:36.531Z",
+      "at": "2026-11-25T13:16:06.424Z",
       "actor_name": "Tomas Silva (Applicant)",
       "action": "submit_loan_application",
       "entity": "loan_applications",
@@ -1539,7 +1525,7 @@
     },
     {
       "id": 8,
-      "at": "2026-11-25T05:00:36.531Z",
+      "at": "2026-11-25T20:28:06.424Z",
       "actor_name": "Dra. Maria Mendes (Approver)",
       "action": "decision_approved",
       "entity": "approvals",
@@ -1550,5 +1536,5 @@
       }
     }
   ],
-  "lastUpdated": "2026-11-25T17:00:36.974Z"
+  "lastUpdated": "2026-11-26T08:28:06.426Z"
 }

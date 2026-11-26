@@ -17,6 +17,18 @@ let dbData = {
   lastUpdated: new Date().toISOString(),
 };
 
+// Helper to compute next 5-digit Application ID (10001 to 99999)
+function getNextApplicationNo(applications = []) {
+  let highest = 10000;
+  for (const app of applications) {
+    const num = Number(app.applicationNo);
+    if (!Number.isNaN(num) && num >= 10001 && num <= 99999) {
+      if (num > highest) highest = num;
+    }
+  }
+  return highest + 1;
+}
+
 // Set of active SSE client responses
 const activeClients = new Set();
 
@@ -202,6 +214,9 @@ export function createSharedDbMiddleware(env) {
         if (req.method === 'POST' && url === '/api/db/applications') {
           loadDbFromDisk();
           const newApp = parsedBody;
+          if (!newApp.applicationNo || newApp.applicationNo < 10001) {
+            newApp.applicationNo = getNextApplicationNo(dbData.applications);
+          }
           dbData.applications = [newApp, ...dbData.applications.filter((a) => a.id !== newApp.id)];
           saveDbToDisk();
 
@@ -254,12 +269,13 @@ export function createSharedDbMiddleware(env) {
           };
           dbData.approvals.unshift(newApproval);
 
+          const appLabel = targetApp?.applicationNo ? `Application ID: ${targetApp.applicationNo}` : `Application ID: ${applicationId}`;
           const newNotif = {
             id: `notif-${Date.now()}`,
             application_id: applicationId,
             to_email: applicantEmail || 'bhargownarravula777@gmail.com',
             kind: decision === 'approved' ? 'approval_notice' : 'rejection_notice',
-            subject: `Application ${decision.toUpperCase()}: Reference ${applicationId.slice(-6).toUpperCase()}`,
+            subject: `Application ${decision.toUpperCase()}: ${appLabel}`,
             body: `Application for ${targetApp?.equipment?.name || 'Equipment'} has been ${decision} by ${approverName || 'Approver'}. Reason: ${reason}`,
             status: 'sent',
             created_at: new Date().toISOString(),
@@ -471,6 +487,8 @@ export function createSharedDbMiddleware(env) {
             targetApp = dbData.applications[appIndex];
           }
 
+          const appLabel = targetApp?.applicationNo ? `Application ID: ${targetApp.applicationNo}` : `Application ID: ${applicationId}`;
+
           // Add notification
           const newNotif = {
             id: 'NOTIF-' + Date.now(),
@@ -478,7 +496,7 @@ export function createSharedDbMiddleware(env) {
             type: 'CANCELLATION',
             recipient: targetApp?.email || targetApp?.applicantEmail || 'bhargownarravula777@gmail.com',
             title: 'Application Cancelled',
-            message: `Your Unitel financing application #${applicationId} has been successfully cancelled.`,
+            message: `Your Unitel financing ${appLabel} has been successfully cancelled.`,
             created_at: new Date().toISOString(),
           };
           dbData.notifications.unshift(newNotif);
@@ -490,7 +508,7 @@ export function createSharedDbMiddleware(env) {
             actor: msisdn || role || 'applicant',
             role: role || 'customer',
             application_id: applicationId,
-            details: `Applicant explicitly confirmed cancellation of application #${applicationId}. Status updated to Cancelled. Notification email triggered.`,
+            details: `Applicant explicitly confirmed cancellation of ${appLabel}. Status updated to Cancelled. Notification email triggered.`,
             timestamp: new Date().toISOString(),
           };
           dbData.auditLogs.unshift(newAudit);

@@ -22,6 +22,19 @@ const STORAGE_KEY_NOTIFICATIONS = 'unitel_credit_notifications_v2';
 const STORAGE_KEY_AUDIT_LOG = 'unitel_credit_audit_log_v2';
 export const STORAGE_KEY_ACTIVE_DRAFT = 'unitel_credit_active_draft_v3';
 
+export function getNextApplicationNo(applications: { applicationNo?: number }[] = []): number {
+  let highest = 10000;
+  for (const app of applications) {
+    const num = Number(app.applicationNo);
+    if (!Number.isNaN(num) && num >= 10001 && num <= 99999) {
+      if (num > highest) {
+        highest = num;
+      }
+    }
+  }
+  return highest + 1;
+}
+
 export interface ApplicationDraft {
   id: string;
   step: number;
@@ -195,6 +208,7 @@ export function createSeedLoanData() {
   // App 1: S1 João Baptista (18,000 Kz, 6m, Approved)
   const app1: LoanApplication = {
     id: 'app-seed-001',
+    applicationNo: 10001,
     evaluation_id: evals[0]?.id || 'eval-seed-001',
     equipment_id: eqFeaturePhone.id,
     price_kz: eqFeaturePhone.price_kz,
@@ -221,6 +235,7 @@ export function createSeedLoanData() {
   // App 2: S3 Esperança Domingos (Samsung A05 85,000 Kz, 6m, Submitted / Pending Review)
   const app2: LoanApplication = {
     id: 'app-seed-002',
+    applicationNo: 10002,
     evaluation_id: evals[1]?.id || 'eval-seed-002',
     equipment_id: eqSamsungA05.id,
     price_kz: eqSamsungA05.price_kz,
@@ -238,6 +253,7 @@ export function createSeedLoanData() {
   // App 3: S7 Dr. Paulo Afonso (Lenovo Tab 210,000 Kz, 12m, Approved)
   const app3: LoanApplication = {
     id: 'app-seed-003',
+    applicationNo: 10003,
     evaluation_id: evals[2]?.id || 'eval-seed-003',
     equipment_id: eqLenovoTab.id,
     price_kz: eqLenovoTab.price_kz,
@@ -264,6 +280,7 @@ export function createSeedLoanData() {
   // App 4: Mateus Kiala (Redmi 13C 120,000 Kz, Rejected - SIM swap hold & thin file)
   const app4: LoanApplication = {
     id: 'app-seed-004',
+    applicationNo: 10004,
     evaluation_id: evals[3]?.id || 'eval-seed-004',
     equipment_id: eqRedmi13C.id,
     price_kz: eqRedmi13C.price_kz,
@@ -290,6 +307,7 @@ export function createSeedLoanData() {
   // App 5: S8 Rosa Maria Bernardo (Samsung A15 165,000 Kz, Rejected - EMI Cap Exceeded)
   const app5: LoanApplication = {
     id: 'app-seed-005',
+    applicationNo: 10005,
     evaluation_id: evals[4]?.id || 'eval-seed-005',
     equipment_id: eqSamsungA15.id,
     price_kz: eqSamsungA15.price_kz,
@@ -316,6 +334,7 @@ export function createSeedLoanData() {
   // App 6: S5 Alberto Sebastião (Solar Kit 65,000 Kz, 6m, Submitted / Queue)
   const app6: LoanApplication = {
     id: 'app-seed-006',
+    applicationNo: 10006,
     evaluation_id: evals[5]?.id || 'eval-seed-006',
     equipment_id: eqSolarKit.id,
     price_kz: eqSolarKit.price_kz,
@@ -333,6 +352,7 @@ export function createSeedLoanData() {
   // App 7: S6 Teresa de Jesus Neto (Pocket Wi-Fi 35,000 Kz, 6m, Saved / Draft)
   const app7: LoanApplication = {
     id: 'app-seed-007',
+    applicationNo: 10007,
     evaluation_id: evals[6]?.id || 'eval-seed-007',
     equipment_id: eqPocketWifi.id,
     price_kz: eqPocketWifi.price_kz,
@@ -350,6 +370,7 @@ export function createSeedLoanData() {
   // App 8: S2 Manuel António da Silva (Unitel Smart 45,000 Kz, 6m, Purchased)
   const app8: LoanApplication = {
     id: 'app-seed-008',
+    applicationNo: 10008,
     evaluation_id: evals[7]?.id || 'eval-seed-008',
     equipment_id: eqUnitelSmart.id,
     price_kz: eqUnitelSmart.price_kz,
@@ -524,6 +545,37 @@ export function getStoredApplications(includeDeleted: boolean = false): LoanAppl
       return includeDeleted ? seed.applications : seed.applications.filter(a => !a.deleted_at);
     }
     const list: LoanApplication[] = parsed;
+    let hasMigrated = false;
+    let maxAssigned = 10000;
+    for (const a of list) {
+      if (typeof a.applicationNo === 'number' && a.applicationNo > maxAssigned) {
+        maxAssigned = a.applicationNo;
+      }
+    }
+    const seedIdMap: Record<string, number> = {
+      'app-seed-001': 10001,
+      'app-seed-002': 10002,
+      'app-seed-003': 10003,
+      'app-seed-004': 10004,
+      'app-seed-005': 10005,
+      'app-seed-006': 10006,
+      'app-seed-007': 10007,
+      'app-seed-008': 10008,
+    };
+    for (const a of list) {
+      if (!a.applicationNo) {
+        if (seedIdMap[a.id]) {
+          a.applicationNo = seedIdMap[a.id];
+        } else {
+          maxAssigned += 1;
+          a.applicationNo = maxAssigned;
+        }
+        hasMigrated = true;
+      }
+    }
+    if (hasMigrated && typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEY_APPLICATIONS, JSON.stringify(list));
+    }
     return includeDeleted ? list : list.filter(a => !a.deleted_at);
   } catch {
     const apps = createSeedLoanData().applications;
@@ -533,6 +585,9 @@ export function getStoredApplications(includeDeleted: boolean = false): LoanAppl
 
 export function saveApplication(app: LoanApplication, analystEmail: string = 'bhargownarravula777@gmail.com'): void {
   const current = getStoredApplications(true);
+  if (!app.applicationNo || app.applicationNo < 10001) {
+    app.applicationNo = getNextApplicationNo(current);
+  }
   current.unshift(app);
   if (typeof window !== 'undefined' && window.localStorage) {
     localStorage.setItem(STORAGE_KEY_APPLICATIONS, JSON.stringify(current));
@@ -546,11 +601,13 @@ export function saveApplication(app: LoanApplication, analystEmail: string = 'bh
     ? analystEmail
     : (app.evaluation?.customer?.email || 'bhargownarravula777@gmail.com');
 
+  const appLabel = app.applicationNo ? `Application ID: ${app.applicationNo}` : `Application ID: ${app.id}`;
+
   // Generate Branded HTML Email
   const emailHtml = generateLoanEmailHtml({
     kind: 'submission_notice',
     customerName: app.evaluation?.customer?.full_name || 'Subscriber',
-    applicationId: app.id,
+    applicationId: app.applicationNo ? String(app.applicationNo) : app.id,
     equipmentName: app.equipment?.name || 'Equipment',
     priceKz: app.price_kz,
     monthlyEmiKz: app.monthly_emi_kz,
@@ -563,10 +620,10 @@ export function saveApplication(app: LoanApplication, analystEmail: string = 'bh
   // Attempt live email dispatch (Gmail SMTP or local fallback)
   dispatchTransactionalEmail({
     to: recipient,
-    subject: `New Credit Application Submitted (${app.id.slice(-6).toUpperCase()}) - ${app.evaluation?.customer?.full_name}`,
+    subject: `New Credit Application Submitted (${appLabel}) - ${app.evaluation?.customer?.full_name}`,
     html: emailHtml,
     kind: 'submission_notice',
-    applicationId: app.id,
+    applicationId: app.applicationNo ? String(app.applicationNo) : app.id,
   }).then((res) => {
     // Trigger Notification to Approver & Applicant
     addNotification({
@@ -574,7 +631,7 @@ export function saveApplication(app: LoanApplication, analystEmail: string = 'bh
       application_id: app.id,
       to_email: recipient,
       kind: 'submission_notice',
-      subject: `New Credit Application Submitted (${app.id.slice(-6).toUpperCase()}) - ${app.evaluation?.customer?.full_name}`,
+      subject: `New Credit Application Submitted (${appLabel}) - ${app.evaluation?.customer?.full_name}`,
       body: `Application for ${app.equipment?.name} (${app.price_kz.toLocaleString()} Kz) submitted. Monthly EMI: ${app.monthly_emi_kz.toLocaleString()} Kz (${app.emi_share_pct}% share). Status: Pending Approver Review. Notification dispatched to ${recipient}.`,
       html_body: emailHtml,
       status: (res.mode === 'live_gmail' || res.mode === 'live_resend' || res.mode === 'live_brevo') && res.success ? 'sent' : 'logged',
@@ -673,6 +730,7 @@ export function processApprovalDecision(
 
   // 3. Generate Decision Email HTML
   const targetApp = apps[appIndex];
+  const appLabel = targetApp?.applicationNo ? `Application ID: ${targetApp.applicationNo}` : `Application ID: ${applicationId}`;
   const recipient = applicantEmail && applicantEmail.includes('@')
     ? applicantEmail
     : (targetApp?.evaluation?.customer?.email || 'bhargownarravula777@gmail.com');
@@ -680,7 +738,7 @@ export function processApprovalDecision(
   const emailHtml = generateLoanEmailHtml({
     kind: decision === 'approved' ? 'approval_notice' : 'rejection_notice',
     customerName: targetApp?.evaluation?.customer?.full_name || 'Subscriber',
-    applicationId: applicationId,
+    applicationId: targetApp?.applicationNo ? String(targetApp.applicationNo) : applicationId,
     equipmentName: targetApp?.equipment?.name || 'Equipment',
     priceKz: targetApp?.price_kz || 0,
     monthlyEmiKz: targetApp?.monthly_emi_kz,
@@ -694,10 +752,10 @@ export function processApprovalDecision(
   // Attempt live email dispatch
   dispatchTransactionalEmail({
     to: recipient,
-    subject: `Application ${decision.toUpperCase()}: Reference ${applicationId.slice(-6).toUpperCase()}`,
+    subject: `Application ${decision.toUpperCase()}: ${appLabel}`,
     html: emailHtml,
     kind: decision === 'approved' ? 'approval_notice' : 'rejection_notice',
-    applicationId,
+    applicationId: targetApp?.applicationNo ? String(targetApp.applicationNo) : applicationId,
   }).then((res) => {
     // Log Notification to Applicant
     addNotification({
@@ -705,7 +763,7 @@ export function processApprovalDecision(
       application_id: applicationId,
       to_email: recipient,
       kind: decision === 'approved' ? 'approval_notice' : 'rejection_notice',
-      subject: `Application ${decision.toUpperCase()}: Reference ${applicationId.slice(-6).toUpperCase()}`,
+      subject: `Application ${decision.toUpperCase()}: ${appLabel}`,
       body: `Your loan application for ${targetApp?.equipment?.name || 'Equipment'} has been ${decision} by ${approverName}. Note: ${reason}`,
       html_body: emailHtml,
       status: (res.mode === 'live_gmail' || res.mode === 'live_resend' || res.mode === 'live_brevo') && res.success ? 'sent' : 'logged',

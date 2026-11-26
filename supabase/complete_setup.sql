@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS public.evaluations (
 -- Loan Applications Table
 CREATE TABLE IF NOT EXISTS public.loan_applications (
   id TEXT PRIMARY KEY,
+  application_no INT UNIQUE,
   evaluation_id TEXT,
   equipment_id TEXT,
   price_kz BIGINT NOT NULL,

@@ -277,6 +277,8 @@ export interface EvaluationResult {
 
 export interface LoanApplication {
   id: string;
+  applicationNo?: number;
+  application_no?: number;
   evaluation_id: string;
   equipment_id: string;
   price_kz: number;

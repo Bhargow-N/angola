@@ -9,6 +9,7 @@ export function executeDeterministicConversation(params: {
   tools_called: string[];
   mode: string;
   mode_label: string;
+  suggestions?: string[];
   action_proposal?: {
     type: 'cancel_application' | 'start_application';
     applicationId?: string;
@@ -24,9 +25,12 @@ export function handleStreamingChat(params: {
   env?: any;
   onChunk: (chunk: string) => void;
   onProposal: (proposal: any) => void;
-  onComplete: (meta: { mode: string; mode_label: string }) => void;
+  onComplete: (meta: { mode: string; mode_label: string; suggestions?: string[] }) => void;
 }): Promise<void>;
 export function getOrCreateSession(sessionId?: string, role?: string): any;
+export function findMatchingApplication(applications?: any[], rawQuery?: string): any;
+export function resolveApp(applications?: any[], query?: string | number): any;
+export function parseAndValidateSuggestions(rawText?: string, role?: string, context?: any): { cleanedText: string; suggestions: string[] };
 export const executeChatTool: typeof executeTool;
 export const handleChatQuery: typeof executeDeterministicConversation;
 export const PORTAL_KNOWLEDGE: any[];

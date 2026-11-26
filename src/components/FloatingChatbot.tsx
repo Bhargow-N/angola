@@ -30,6 +30,7 @@ interface ChatMessage {
   retryable?: boolean;
   retryQuery?: string;
   debugInfo?: DebugInfo;
+  suggestions?: string[];
   actionProposal?: {
     type: 'cancel_application' | 'start_application' | 'navigate';
     applicationId?: string;
@@ -179,7 +180,10 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    const nextMessages = [...messages, userMsg];
+    // Buttons disappear once one is clicked or a new message is sent
+    const nextMessages = messages
+      .map((m) => (m.suggestions ? { ...m, suggestions: [] } : m))
+      .concat(userMsg);
     setMessages(nextMessages);
     setInput('');
     setLoading(true);
@@ -270,6 +274,7 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
                           modeLabel: payload.mode_label || m.modeLabel,
                           retryable: Boolean(payload.retryable),
                           retryQuery: payload.retryable ? query : undefined,
+                          suggestions: Array.isArray(payload.suggestions) ? payload.suggestions : undefined,
                           debugInfo: {
                             provider: payload.provider || payload.mode || 'unknown',
                             model: payload.model || 'unknown',
@@ -389,7 +394,11 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
   };
 
   const renderFormattedText = (text: string) => {
-    const parts = text.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*|\[[^\]]+\]\(\/[^)]+\))/g);
+    const cleanText = text
+      .replace(/<suggestions>[\s\S]*?<\/suggestions>/gi, '')
+      .replace(/<suggestions>[\s\S]*$/gi, '')
+      .trim();
+    const parts = cleanText.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*|\[[^\]]+\]\(\/[^)]+\))/g);
     return parts.map((part, i) => {
       if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
         return <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>;
@@ -581,6 +590,26 @@ export const FloatingChatbot: React.FC<FloatingChatbotProps> = ({
                         <ArrowRight className="w-4 h-4" />
                         <span>{m.actionProposal?.label || 'Open Page'}</span>
                       </button>
+                    </div>
+                  )}
+
+                  {/* Follow-up Question Buttons ("queue") */}
+                  {m.sender === 'bot' && m.suggestions && m.suggestions.length > 0 && !loading && (
+                    <div className="mt-3 pt-2.5 border-t border-slate-100 flex flex-col gap-1.5 w-full animate-in fade-in slide-in-from-bottom-2 duration-150">
+                      {m.suggestions.map((suggestion, sIdx) => (
+                        <button
+                          key={sIdx}
+                          type="button"
+                          onClick={() => {
+                            setMessages((prev) => prev.map((msg) => ({ ...msg, suggestions: [] })));
+                            handleSend(suggestion);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl bg-orange/10 hover:bg-orange/20 text-orange-950 border border-orange/25 font-semibold text-xs transition-all flex items-center justify-between group shadow-2xs cursor-pointer"
+                        >
+                          <span>{suggestion}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-orange/60 group-hover:text-orange group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>

@@ -205,8 +205,8 @@ export const ApplicantPortal: React.FC = () => {
             <div className="card-base p-6 rounded-2xl bg-white border border-slate-border shadow-xs space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider font-mono">
-                    Application #{activeApp?.id || 'APP-1001'}
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider font-mono">
+                    Application ID: {activeApp?.applicationNo || '10001'}
                   </span>
                   <h2 className="text-xl font-black text-navy mt-0.5">
                     {activeApp?.evaluation?.customer?.full_name || 'Thomas Mateus'}
